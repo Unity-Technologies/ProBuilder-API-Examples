@@ -125,8 +125,6 @@ namespace ProBuilder.EditorExamples
 
 			GUILayout.Space(4);
 
-			//		pb_EditorGUIUtility.DrawSolidColor(r, logBackgroundColor);
-
 			scroll = GUILayout.BeginScrollView(scroll);
 
 			int len = logs.Count;

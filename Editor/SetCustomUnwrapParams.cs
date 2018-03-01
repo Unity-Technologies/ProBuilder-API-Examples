@@ -1,7 +1,4 @@
-﻿/**
- *	Set new ProBuilder objects to use special UV2 unwrap params.
- */
-
+﻿// Set new ProBuilder objects to use special UV2 unwrap params.
 // Uncomment this line to enable this script.
 // #define PROBUILDER_API_EXAMPLE
 
@@ -23,12 +20,12 @@ namespace ProBuilder.EditorExamples
 		/// </summary>
 		static SetUnwrapParams()
 		{
-			pb_EditorUtility.AddOnObjectCreatedListener(OnProBuilderObjectCreated);
+			pb_EditorApi.AddOnObjectCreatedListener(OnProBuilderObjectCreated);
 		}
 
 		~SetUnwrapParams()
 		{
-			pb_EditorUtility.RemoveOnObjectCreatedListener(OnProBuilderObjectCreated);
+			pb_EditorApi.RemoveOnObjectCreatedListener(OnProBuilderObjectCreated);
 		}
 
 		/// <summary>

@@ -9,7 +9,6 @@
 
 using UnityEngine;
 using UnityEditor;
-using System.Collections;
 using ProBuilder.Core;
 using ProBuilder.EditorCore;
 
@@ -18,23 +17,21 @@ namespace ProBuilder.EditorExamples
 	[InitializeOnLoad]
 	public class RenameNewObjects : Editor
 	{
-		/**
-		 *	Static constructor is called and subscribes to the OnProBuilderObjectCreated delegate.
-		 */
+		// Static constructor is called and subscribes to the OnProBuilderObjectCreated delegate.
 		static RenameNewObjects()
 		{
-			pb_EditorUtility.AddOnObjectCreatedListener(OnProBuilderObjectCreated);
+			pb_EditorApi.AddOnObjectCreatedListener(OnProBuilderObjectCreated);
 		}
 
 		~RenameNewObjects()
 		{
-			pb_EditorUtility.RemoveOnObjectCreatedListener(OnProBuilderObjectCreated);
+			pb_EditorApi.RemoveOnObjectCreatedListener(OnProBuilderObjectCreated);
 		}
 
-		/**
-		 *	When a new object is created this function is called with a reference to the pb_Object
-		 *	last built.
-		 */
+		/// <summary>
+		/// When a new object is created this function is called with a reference to the pb_Object last built.
+		/// </summary>
+		/// <param name="pb"></param>
 		static void OnProBuilderObjectCreated(pb_Object pb)
 		{
 			pb.gameObject.name = string.Format("pb_{0}{1}", pb.gameObject.name, pb.GetInstanceID());
