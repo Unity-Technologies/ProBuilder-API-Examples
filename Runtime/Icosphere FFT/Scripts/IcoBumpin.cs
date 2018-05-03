@@ -1,32 +1,34 @@
 ﻿#if UNITY_EDITOR || UNITY_STANDALONE
 using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using ProBuilder.Core;
-using ProBuilder.MeshOperations;
+using UnityEngine.ProBuilder;
+using UnityEngine.ProBuilder.MeshOperations;
 
 namespace ProBuilder.Examples
 {
-
 	[RequireComponent(typeof(AudioSource))]
 	public class IcoBumpin : MonoBehaviour
 	{
-		pb_Object ico;			// A reference to the icosphere pb_Object component
-		Mesh icoMesh;			// A reference to the icosphere mesh (cached because we access the vertex array every frame)
-		Transform icoTransform;	// A reference to the icosphere transform component.  Cached because I can't remember if GameObject.transform is still a performance drain :|
-		AudioSource audioSource;// Cached reference to the audiosource.
+		// A reference to the icosphere ProBuilder component
+		ProBuilderMesh ico;
+		// A reference to the icosphere mesh (cached because we access the vertex array every frame)
+		Mesh icoMesh;
+		// A reference to the icosphere transform component.  Cached because I can't remember if GameObject.transform is still a performance drain :|
+		Transform icoTransform;
+		// Cached reference to the audiosource.
+		AudioSource audioSource;
 
-		/**
-		 * Holds a pb_Face, the normal of that face, and the index of every vertex that touches it (sharedIndices).
-		 */
+		/// <summary>
+		/// Holds a face, the normal of that face, and the index of every vertex that touches it (sharedIndices).
+		/// </summary>
 		struct FaceRef
 		{
-			public pb_Face face;
+			public Face face;
 			public Vector3 nrm;		// face normal
 			public int[] indices;	// all vertex indices (including shared connected vertices)
 
-			public FaceRef(pb_Face f, Vector3 n, int[] i)
+			public FaceRef(Face f, Vector3 n, int[] i)
 			{
 				face = f;
 				nrm = n;
@@ -120,15 +122,15 @@ namespace ProBuilder.Examples
 				missingClipWarning.SetActive(true);
 
 			// Create a new icosphere.
-			ico = pb_ShapeGenerator.IcosahedronGenerator(icoRadius, icoSubdivisions);
+			ico = ShapeGenerator.IcosahedronGenerator(icoRadius, icoSubdivisions);
 
 			// Shell is all the faces on the new icosphere.
-			pb_Face[] shell = ico.faces;
+			var shell = ico.faces.ToArray();
 
-			// Materials are set per-face on pb_Object meshes.  pb_Objects will automatically
+			// Materials are set per-face on ProBuilder meshes.  ProBuilders will automatically
 			// condense the mesh to the smallest set of subMeshes possible based on materials.
 #if !PROTOTYPE
-			foreach(pb_Face f in shell)
+			foreach(Face f in shell)
 				f.material = material;
 #else
 			ico.gameObject.GetComponent<MeshRenderer>().sharedMaterial = material;
@@ -147,22 +149,21 @@ namespace ProBuilder.Examples
 			ico.Refresh();
 
 			outsides = new FaceRef[shell.Length];
-			Dictionary<int, int> lookup = ico.sharedIndices.ToDictionary();
+			Dictionary<int, int> lookup = ico.sharedIndexes.ToDictionary();
 
 			// Populate the outsides[] cache.  This is a reference to the tops of each extruded column, including
 			// copies of the sharedIndices.
-			for(int i = 0; i < shell.Length; ++i)
-				outsides[i] = new FaceRef( 	shell[i],
-											pb_Math.Normal(ico, shell[i]),
-											ico.sharedIndices.AllIndicesWithValues(lookup, shell[i].distinctIndices).ToArray()
-											);
+			for (int i = 0; i < shell.Length; ++i)
+				outsides[i] = new FaceRef(shell[i],
+					ProBuilderMath.Normal(ico, shell[i]),
+					ico.sharedIndexes.AllIndexesWithValues(lookup, shell[i].distinctIndexes).ToArray()
+				);
 
 			// Store copy of positions array un-modified
-			original_vertices = new Vector3[ico.vertices.Length];
-			System.Array.Copy(ico.vertices, original_vertices, ico.vertices.Length);
+			original_vertices = ico.positions.ToArray();
 
 			// displaced_vertices should mirror icosphere mesh vertices.
-			displaced_vertices = ico.vertices;
+			displaced_vertices = ico.positions.ToArray();
 
 			icoMesh = ico.GetComponent<MeshFilter>().sharedMesh;
 			icoTransform = ico.transform;
@@ -199,7 +200,7 @@ namespace ProBuilder.Examples
 
 			/**
 			 * For each face, translate the vertices some distance depending on the frequency range assigned.
-			 * Not using the TranslateVertices() pb_Object extension method because as a convenience, that method
+			 * Not using the TranslateVertices() ProBuilder extension method because as a convenience, that method
 			 * gathers the sharedIndices per-face on every call, which while not tremondously expensive in most
 			 * contexts, is far too slow for use when dealing with audio, and especially so when the mesh is
 			 * somewhat large.

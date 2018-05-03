@@ -1,17 +1,18 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
-using ProBuilder.EditorCore;
-using ProBuilder.Core;
+using UnityEngine.ProBuilder;
+using UnityEditor.ProBuilder;
+using ProBuilderEditorUtility = UnityEditor.ProBuilder.EditorUtility;
 
 namespace ProBuilder.EditorExamples
 {
 	class EditorCallbackViewer : EditorWindow
 	{
-		[MenuItem("Tools/" + pb_Constant.PRODUCT_NAME + "/API Examples/Log Callbacks Window")]
+		[MenuItem("Tools/ProBuilder/API Examples/Log Callbacks Window")]
 		static void MenuInitEditorCallbackViewer()
 		{
-			EditorWindow.GetWindow<EditorCallbackViewer>(true, "ProBuilder Callbacks", true).Show();
+			GetWindow<EditorCallbackViewer>(true, "ProBuilder Callbacks", true).Show();
 		}
 
 		List<string> logs = new List<string>();
@@ -31,37 +32,37 @@ namespace ProBuilder.EditorExamples
 		void OnEnable()
 		{
 			// Delegate for Top/Geometry/Texture mode changes.
-			pb_EditorApi.AddOnEditLevelChangedListener(OnEditLevelChanged);
+			ProBuilderEditor.onEditLevelChanged += OnEditLevelChanged;
 
 			// Called when a new ProBuilder object is created.
 			// note - this was added in ProBuilder 2.5.1
-			pb_EditorApi.AddOnObjectCreatedListener(OnProBuilderObjectCreated);
+			ProBuilderEditorUtility.onObjectCreated += OnProBuilderObjectCreated;
 
 			// Called when the ProBuilder selection changes (can be object or element change).
 			// Also called when the geometry is modified by ProBuilder.
-			pb_EditorApi.AddOnSelectionUpdateListener(OnSelectionUpdate);
+			ProBuilderEditor.onSelectionUpdate += OnSelectionUpdate;
 
 			// Called when vertices are about to be modified.
-			pb_EditorApi.AddOnVertexMovementBeginListener(OnVertexMovementBegin);
+			ProBuilderEditor.onVertexMovementBegin += OnVertexMovementBegin;
 
 			// Called when vertices have been moved by ProBuilder.
-			pb_EditorApi.AddOnVertexMovementFinishListener(OnVertexMovementFinish);
+			ProBuilderEditor.onVertexMovementFinish += OnVertexMovementFinish;
 
 			// Called when the Unity mesh is rebuilt from ProBuilder mesh data.
-			pb_EditorApi.AddOnMeshCompiledListener(OnMeshCompiled);
+			EditorMeshUtility.onMeshCompiled += OnMeshCompiled;
 		}
 
 		void OnDisable()
 		{
-			pb_EditorApi.RemoveOnEditLevelChangedListener(OnEditLevelChanged);
-			pb_EditorApi.RemoveOnObjectCreatedListener(OnProBuilderObjectCreated);
-			pb_EditorApi.RemoveOnSelectionUpdateListener(OnSelectionUpdate);
-			pb_EditorApi.RemoveOnVertexMovementBeginListener(OnVertexMovementBegin);
-			pb_EditorApi.RemoveOnVertexMovementFinishListener(OnVertexMovementFinish);
-			pb_EditorApi.RemoveOnMeshCompiledListener(OnMeshCompiled);
+			ProBuilderEditor.onEditLevelChanged -= OnEditLevelChanged;
+			ProBuilderEditorUtility.onObjectCreated -= OnProBuilderObjectCreated;
+			ProBuilderEditor.onSelectionUpdate -= OnSelectionUpdate;
+			ProBuilderEditor.onVertexMovementBegin -= OnVertexMovementBegin;
+			ProBuilderEditor.onVertexMovementFinish -= OnVertexMovementFinish;
+			EditorMeshUtility.onMeshCompiled -= OnMeshCompiled;
 		}
 
-		void OnProBuilderObjectCreated(pb_Object pb)
+		void OnProBuilderObjectCreated(ProBuilderMesh pb)
 		{
 			AddLog("Instantiated new ProBuilder Object: " + pb.name);
 		}
@@ -71,22 +72,22 @@ namespace ProBuilder.EditorExamples
 			AddLog("Edit Level Changed: " + (EditLevel) editLevel);
 		}
 
-		void OnSelectionUpdate(pb_Object[] selection)
+		void OnSelectionUpdate(ProBuilderMesh[] selection)
 		{
 			AddLog("Selection Updated: " + string.Format("{0} objects selected.", selection != null ? selection.Length : 0));
 		}
 
-		void OnVertexMovementBegin(pb_Object[] selection)
+		void OnVertexMovementBegin(ProBuilderMesh[] selection)
 		{
 			AddLog("Began Moving Vertices");
 		}
 
-		void OnVertexMovementFinish(pb_Object[] selection)
+		void OnVertexMovementFinish(ProBuilderMesh[] selection)
 		{
 			AddLog("Finished Moving Vertices");
 		}
 
-		void OnMeshCompiled(pb_Object pb, Mesh mesh)
+		void OnMeshCompiled(ProBuilderMesh pb, Mesh mesh)
 		{
 			AddLog(string.Format("Mesh {0} rebuilt", pb.name));
 		}

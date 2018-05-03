@@ -29,10 +29,10 @@ namespace ProBuilder.EditorExamples
 		}
 
 		/// <summary>
-		/// When a new object is created this function is called with a reference to the pb_Object last built.
+		/// When a new object is created this function is called with a reference to the ProBuilderMesh last built.
 		/// </summary>
 		/// <param name="pb"></param>
-		static void OnProBuilderObjectCreated(pb_Object pb)
+		static void OnProBuilderObjectCreated(ProBuilderMesh pb)
 		{
 			pb.gameObject.name = string.Format("pb_{0}{1}", pb.gameObject.name, pb.GetInstanceID());
 		}

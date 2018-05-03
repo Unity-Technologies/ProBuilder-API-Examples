@@ -3,28 +3,26 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using ProBuilder.Core;
-using ProBuilder.MeshOperations;
+using UnityEngine.ProBuilder;
+using UnityEngine.ProBuilder.MeshOperations;
 using System.Linq;
 
 namespace ProBuilder.Examples
 {
-	/**
-	 * Do a snake-like thing with a quad and some extrudes.
-	 */
+	/// <summary>
+	/// Do a snake-like thing with a quad and some extrudes.
+	/// </summary>
 	public class ExtrudeRandomEdges : MonoBehaviour
 	{
-		private pb_Object pb;
-		pb_Face lastExtrudedFace = null;
+		ProBuilderMesh pb;
+		Face lastExtrudedFace = null;
 		public float distance = 1f;
 
-		/**
-		 * Build a starting point (in this case, a quad)
-		 */
+		// Build a starting point (in this case, a quad)
 		void Start()
 		{
-			pb = pb_ShapeGenerator.PlaneGenerator(1, 1, 0, 0, ProBuilder.Core.Axis.Up);
-			foreach (var f in pb.faces) f.material = pb_Material.DefaultMaterial;
+			pb = ShapeGenerator.PlaneGenerator(1, 1, 0, 0, Axis.Up);
+			foreach (var f in pb.faces) f.material = BuiltinMaterials.DefaultMaterial;
 			lastExtrudedFace = pb.faces[0];
 		}
 
@@ -38,25 +36,21 @@ namespace ProBuilder.Examples
 
 		void ExtrudeEdge()
 		{
-			pb_Face sourceFace = lastExtrudedFace;
+			var sourceFace = lastExtrudedFace;
 
 			// fetch a random perimeter edge connected to the last face extruded
-			List<pb_WingedEdge> wings = pb_WingedEdge.GetWingedEdges(pb);
-			IEnumerable<pb_WingedEdge> sourceWings = wings.Where(x => x.face == sourceFace);
-			List<pb_Edge> nonManifoldEdges = sourceWings.Where(x => x.opposite == null).Select(y => y.edge.local).ToList();
+			List<WingedEdge> wings = WingedEdge.GetWingedEdges(pb);
+			IEnumerable<WingedEdge> sourceWings = wings.Where(x => x.face == sourceFace);
+			List<Edge> nonManifoldEdges = sourceWings.Where(x => x.opposite == null).Select(y => y.edge.local).ToList();
 			int rand = (int) Random.Range(0, nonManifoldEdges.Count);
-			pb_Edge sourceEdge = nonManifoldEdges[rand];
+			Edge sourceEdge = nonManifoldEdges[rand];
 
 			// get the direction this edge should extrude in
-			Vector3 dir = ((pb.vertices[sourceEdge.x] + pb.vertices[sourceEdge.y]) * .5f) -
-			              sourceFace.distinctIndices.Average(x => pb.vertices[x]);
+			Vector3 dir = ((pb.positions[sourceEdge.x] + pb.positions[sourceEdge.y]) * .5f) -
+			              sourceFace.distinctIndexes.Average(x => pb.positions[x]);
 			dir.Normalize();
 
-			// this will be populated with the extruded edge
-			pb_Edge[] extrudedEdges;
-
-			// perform extrusion
-			pb.Extrude(new pb_Edge[] {sourceEdge}, 0f, false, true, out extrudedEdges);
+			Edge[] extrudedEdges = pb.Extrude(new Edge[] { sourceEdge }, 0f, false, true);
 
 			// get the last extruded face
 			lastExtrudedFace = pb.faces.Last();

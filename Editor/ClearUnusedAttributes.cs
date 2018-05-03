@@ -1,11 +1,9 @@
-﻿// Uncomment this line to enable this script.
-// #define PROBUILDER_API_EXAMPLE
-
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEditor;
 using System.Collections;
-using ProBuilder.Core;
-using ProBuilder.EditorCore;
+using UnityEngine.ProBuilder;
+using UnityEditor.ProBuilder;
+using MeshUtility = UnityEditor.MeshUtility;
 
 namespace ProBuilder.EditorExamples
 {
@@ -21,12 +19,12 @@ namespace ProBuilder.EditorExamples
 		/// </summary>
 		static ClearUnusedAttributes()
 		{
-			pb_EditorApi.AddOnMeshCompiledListener(OnMeshCompiled);
+			EditorMeshUtility.onMeshCompiled += OnMeshCompiled;
 		}
 
 		~ClearUnusedAttributes()
 		{
-			pb_EditorApi.RemoveOnMeshCompiledListener(OnMeshCompiled);
+			EditorMeshUtility.onMeshCompiled -= OnMeshCompiled;
 		}
 
 		/// <summary>
@@ -34,14 +32,11 @@ namespace ProBuilder.EditorExamples
 		/// </summary>
 		/// <param name="pb"></param>
 		/// <param name="mesh"></param>
-		static void OnMeshCompiled(pb_Object pb, Mesh mesh)
+		static void OnMeshCompiled(ProBuilderMesh pb, Mesh mesh)
 		{
-#if PROBUILDER_API_EXAMPLE
 			mesh.uv = null;
 			mesh.colors32 = null;
 			mesh.tangents = null;
-#endif
-
 			// Print out the mesh attributes in a neatly formatted string.
 			// Debug.Log( pb_MeshUtility.Print(mesh) );
 		}

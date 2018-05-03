@@ -2,7 +2,8 @@
 
 using UnityEngine;
 using System.Collections;
-using ProBuilder.Core;
+using System.Linq;
+using UnityEngine.ProBuilder;
 
 namespace ProBuilder.Examples
 {
@@ -11,159 +12,153 @@ namespace ProBuilder.Examples
 	/// </summary>
 	public class RuntimeEdit : MonoBehaviour
 	{
-		class pb_Selection
+		class ProBuilderSelection
 		{
-			public pb_Object pb;	///< This is the currently selected ProBuilder object.
-			public pb_Face face;	///< Keep a reference to the currently selected face.
+			public ProBuilderMesh mesh { get; set; }
+			public Face face { get; set; }
 
-			public pb_Selection(pb_Object _pb, pb_Face _face)
+			public ProBuilderSelection(ProBuilderMesh mesh, Face face)
 			{
-				pb = _pb;
-				face = _face;
+				this.mesh = mesh;
+				this.face = face;
 			}
 
 			public bool HasObject()
 			{
-				return pb != null;
+				return mesh != null;
 			}
 
 			public bool IsValid()
 			{
-				return pb != null && face != null;
+				return mesh != null && face != null;
 			}
 
-			public bool Equals(pb_Selection sel)
+			public bool Equals(ProBuilderSelection sel)
 			{
-				if(sel != null && sel.IsValid())
-					return (pb == sel.pb && face == sel.face);
+				if (sel != null && sel.IsValid())
+					return (mesh == sel.mesh && face == sel.face);
 				else
 					return false;
 			}
 
 			public void Destroy()
 			{
-				if(pb != null)
-					GameObject.Destroy(pb.gameObject);
+				if (mesh != null)
+					Object.Destroy(mesh.gameObject);
 			}
 
 			public override string ToString()
 			{
-				return "pb_Object: " + pb == null ? "Null" : pb.name +
-					"\npb_Face: " + ( (face == null) ? "Null" : face.ToString() );
+				return "ProBuilderMesh: " + mesh == null
+					? "Null"
+					: mesh.name +
+					"\nFace: " + ((face == null) ? "Null" : face.ToString());
 			}
 		}
 
-		pb_Selection currentSelection;
-		pb_Selection previousSelection;
+		ProBuilderSelection m_CurrentSelection;
+		ProBuilderSelection m_PreviousSelection;
 
-		private pb_Object preview;
-		public Material previewMaterial;
+		ProBuilderMesh m_PreviewMesh;
+		[SerializeField]
+		Material m_PreviewMaterial;
 
-		/**
-		 *	\brief Wake up!
-		 */
+		Vector2 m_MousePositionInitial = Vector2.zero;
+		bool m_IsDragging;
+		[SerializeField]
+		[Range(1f, 200f)]
+		float rotateSpeed = 100f;
+
 		void Awake()
 		{
 			SpawnCube();
 		}
 
-		/**
-		 *	\brief This is the usual Unity OnGUI method.  We only use it to show a 'Reset' button.
-		 */
 		void OnGUI()
 		{
-			// To reset, nuke the pb_Object and build a new one.
-			if(GUI.Button(new Rect(5, Screen.height - 25, 80, 20), "Reset"))
+			// To reset, nuke the ProBuilderMesh and build a new one.
+			if (GUI.Button(new Rect(5, Screen.height - 25, 80, 20), "Reset"))
 			{
-				currentSelection.Destroy();
-				Destroy(preview.gameObject);
+				m_CurrentSelection.Destroy();
+				Destroy(m_PreviewMesh.gameObject);
 				SpawnCube();
 			}
 		}
 
-		/**
-		 *	\brief Creates a new ProBuilder cube and sets it up with a concave MeshCollider.
-		 */
+		/// <summary>
+		/// Creates a new ProBuilder cube and sets it up with a concave MeshCollider.
+		/// </summary>
 		void SpawnCube()
 		{
 			// This creates a basic cube with ProBuilder features enabled.  See the ProBuilder.Shape enum to
 			// see all possible primitive types.
-			pb_Object pb = pb_ShapeGenerator.CubeGenerator(Vector3.one);
+			ProBuilderMesh mesh = ShapeGenerator.CubeGenerator(Vector3.one);
 
 			// The runtime component requires that a concave mesh collider be present in order for face selection
 			// to work.
-			pb.gameObject.AddComponent<MeshCollider>().convex = false;
+			mesh.gameObject.AddComponent<MeshCollider>().convex = false;
 
 			// Now set it to the currentSelection
-			currentSelection = new pb_Selection(pb, null);
+			m_CurrentSelection = new ProBuilderSelection(mesh, null);
 		}
 
-		Vector2 mousePosition_initial = Vector2.zero;
-		bool dragging = false;
-		public float rotateSpeed = 100f;
-
-		/**
-		 *	\brief This is responsible for moving the camera around and not much else.
-		 */
-		public void LateUpdate()
+		void LateUpdate()
 		{
-			if(!currentSelection.HasObject())
+			if (!m_CurrentSelection.HasObject())
 				return;
 
-			if(Input.GetMouseButtonDown(1) || (Input.GetMouseButtonDown(0) && Input.GetKey(KeyCode.LeftAlt)))
+			if (Input.GetMouseButtonDown(1) || (Input.GetMouseButtonDown(0) && Input.GetKey(KeyCode.LeftAlt)))
 			{
-				mousePosition_initial = Input.mousePosition;
-				dragging = true;
+				m_MousePositionInitial = Input.mousePosition;
+				m_IsDragging = true;
 			}
 
-			if(dragging)
+			if (m_IsDragging)
 			{
-				Vector2 delta = (Vector3)mousePosition_initial - (Vector3)Input.mousePosition;
+				Vector2 delta = (Vector3)m_MousePositionInitial - (Vector3)Input.mousePosition;
 				Vector3 dir = new Vector3(delta.y, delta.x, 0f);
 
-				currentSelection.pb.gameObject.transform.RotateAround(Vector3.zero, dir, rotateSpeed * Time.deltaTime);
+				m_CurrentSelection.mesh.gameObject.transform.RotateAround(Vector3.zero, dir, rotateSpeed * Time.deltaTime);
 
 				// If there is a currently selected face, update the preview.
-				if(currentSelection.IsValid())
+				if (m_CurrentSelection.IsValid())
 					RefreshSelectedFacePreview();
 			}
 
-			if(Input.GetMouseButtonUp(1) || Input.GetMouseButtonUp(0))
+			if (Input.GetMouseButtonUp(1) || Input.GetMouseButtonUp(0))
 			{
-				dragging = false;
+				m_IsDragging = false;
 			}
 		}
 
-		/**
-		 *	\brief The 'meat' of the operation.  This listens for a click event, then checks for a positive
-		 *	face selection.  If the click has hit a pb_Object, select it.
-		 */
-		public void Update()
+		// This listens for a click event, then checks for a positive face selection.
+		// If the click has hit a ProBuilderMesh, select it.
+		void Update()
 		{
-			if(Input.GetMouseButtonUp(0) && !Input.GetKey(KeyCode.LeftAlt)) {
-
-				if(FaceCheck(Input.mousePosition))
+			if (Input.GetMouseButtonUp(0) && !Input.GetKey(KeyCode.LeftAlt))
+			{
+				if (FaceCheck(Input.mousePosition))
 				{
-					if(currentSelection.IsValid())
+					if (m_CurrentSelection.IsValid())
 					{
 						// Check if this face has been previously selected, and if so, move the face.
 						// Otherwise, just accept this click as a selection.
-						if(!currentSelection.Equals(previousSelection))
+						if (!m_CurrentSelection.Equals(m_PreviousSelection))
 						{
-							previousSelection = new pb_Selection(currentSelection.pb, currentSelection.face);
+							m_PreviousSelection = new ProBuilderSelection(m_CurrentSelection.mesh, m_CurrentSelection.face);
 							RefreshSelectedFacePreview();
 							return;
 						}
 
-						Vector3 localNormal = pb_Math.Normal(currentSelection.pb, currentSelection.face);
+						Vector3 localNormal = ProBuilderMath.Normal(m_CurrentSelection.mesh, m_CurrentSelection.face);
 
-						if(Input.GetKey(KeyCode.LeftShift))
-							currentSelection.pb.TranslateVertices( currentSelection.face.distinctIndices, localNormal.normalized * -.5f );
+						if (Input.GetKey(KeyCode.LeftShift))
+							m_CurrentSelection.mesh.TranslateVertices(m_CurrentSelection.face.distinctIndexes, localNormal.normalized * -.5f);
 						else
-							currentSelection.pb.TranslateVertices( currentSelection.face.distinctIndices, localNormal.normalized * .5f );
+							m_CurrentSelection.mesh.TranslateVertices(m_CurrentSelection.face.distinctIndexes, localNormal.normalized * .5f);
 
 						// Refresh will update the Collision mesh volume, face UVs as applicatble, and normal information.
-						currentSelection.pb.Refresh();
+						m_CurrentSelection.mesh.Refresh();
 
 						// this create the selected face preview
 						RefreshSelectedFacePreview();
@@ -172,33 +167,33 @@ namespace ProBuilder.Examples
 			}
 		}
 
-		/**
-		 *	\brief This is how we figure out what face is clicked.
-		 */
-		public bool FaceCheck(Vector3 pos)
+		bool FaceCheck(Vector3 pos)
 		{
-			Ray ray = Camera.main.ScreenPointToRay (pos);
+			Ray ray = Camera.main.ScreenPointToRay(pos);
 			RaycastHit hit;
 
-			if( Physics.Raycast(ray.origin, ray.direction, out hit))
+			if (Physics.Raycast(ray.origin, ray.direction, out hit))
 			{
-				pb_Object hitpb = hit.transform.gameObject.GetComponent<pb_Object>();
+				ProBuilderMesh hitpb = hit.transform.gameObject.GetComponent<ProBuilderMesh>();
 
-				if(hitpb == null)
+				if (hitpb == null)
 					return false;
 
 				Mesh m = hitpb.GetComponent<MeshFilter>().sharedMesh;
 
-				int[] tri = new int[3] {
+				int[] tri = new int[3]
+				{
 					m.triangles[hit.triangleIndex * 3 + 0],
 					m.triangles[hit.triangleIndex * 3 + 1],
 					m.triangles[hit.triangleIndex * 3 + 2]
 				};
 
-				currentSelection.pb = hitpb;
+				m_CurrentSelection.mesh = hitpb;
+				m_CurrentSelection.face = hitpb.FaceWithTriangle(tri);
 
-				return hitpb.FaceWithTriangle(tri, out currentSelection.face);
+				return m_CurrentSelection.face != null;
 			}
+
 			return false;
 		}
 
@@ -207,26 +202,27 @@ namespace ProBuilder.Examples
 			// Copy the currently selected vertices in world space.
 			// World space so that we don't have to apply transforms
 			// to match the current selection.
-			Vector3[] verts = currentSelection.pb.VerticesInWorldSpace(currentSelection.face.indices);
+			Vector3[] verts = m_CurrentSelection.mesh.VerticesInWorldSpace(m_CurrentSelection.face.indexes);
 
 			// face.indices == triangles, so wind the face to match
 			int[] indices = new int[verts.Length];
-			for(int i = 0; i < indices.Length; i++)
+			for (int i = 0; i < indices.Length; i++)
 				indices[i] = i;
 
 			// Now go through and move the verts we just grabbed out about .1m from the original face.
-			Vector3 normal = pb_Math.Normal(verts);
+			Vector3 normal = ProBuilderMath.Normal(verts);
 
-			for(int i = 0; i < verts.Length; i++)
+			for (int i = 0; i < verts.Length; i++)
 				verts[i] += normal.normalized * .01f;
 
-			if(preview)
-				Destroy(preview.gameObject);
+			if (m_PreviewMesh)
+				Destroy(m_PreviewMesh.gameObject);
 
-			preview = pb_Object.CreateInstanceWithVerticesFaces(verts, new pb_Face[] { new pb_Face(indices) });
-			preview.SetFaceMaterial(preview.faces, previewMaterial);
-			preview.ToMesh();
-			preview.Refresh();
+			m_PreviewMesh = ProBuilderMesh.CreateInstanceWithVerticesFaces(verts, new Face[] { new Face(indices) });
+			foreach (var face in m_PreviewMesh.faces)
+				face.material = m_PreviewMaterial;
+			m_PreviewMesh.ToMesh();
+			m_PreviewMesh.Refresh();
 		}
 	}
 }

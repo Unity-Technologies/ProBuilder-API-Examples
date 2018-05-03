@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
-using ProBuilder.Core;
-using ProBuilder.MeshOperations;
+using UnityEngine.ProBuilder;
+using UnityEngine.ProBuilder.MeshOperations;
 
 namespace ProBuilder.Examples
 {
@@ -11,15 +11,15 @@ namespace ProBuilder.Examples
 		public float m_Height = 1f;
 		public bool m_FlipNormals = false;
 
-		pb_Object m_Mesh;
+		ProBuilderMesh m_Mesh;
 
 		void Start()
 		{
 			// Create a new GameObject
 			var go = new GameObject();
 
-			// Add a pb_Object component (ProBuilder mesh data is stored here)
-			m_Mesh = go.gameObject.AddComponent<pb_Object>();
+			// Add a ProBuilderMesh component (ProBuilder mesh data is stored here)
+			m_Mesh = go.gameObject.AddComponent<ProBuilderMesh>();
 
 			InvokeRepeating("Rebuild", 0f, .1f);
 		}

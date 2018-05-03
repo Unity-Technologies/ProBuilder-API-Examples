@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
-using ProBuilder.Core;
+using System.Linq;
+using UnityEngine.ProBuilder;
 
 namespace ProBuilder.Examples
 {
@@ -11,7 +12,7 @@ namespace ProBuilder.Examples
 	 *	Scene setup:  Create a Unity Sphere primitive in a new scene, then attach
 	 *	this script to the sphere.  Press 'Play'
 	 */
-	public class HighlightNearestFace : MonoBehaviour
+	class HighlightNearestFace : MonoBehaviour
 	{
 		// The distance covered by the plane.
 		public float travel = 50f;
@@ -20,26 +21,26 @@ namespace ProBuilder.Examples
 		public float speed = .2f;
 
 		// ProBuilder mesh component
-		private pb_Object target;
+		ProBuilderMesh m_Mesh;
 
 		// The nearest face to this sphere.
-		private pb_Face nearest = null;
+		Face m_NearestFace = null;
 
 		void Start()
 		{
 			// Generate a 50x50 plane with 25 subdivisions, facing up, with no smoothing applied.
-			target = pb_ShapeGenerator.PlaneGenerator(travel, travel, 25, 25, ProBuilder.Core.Axis.Up);
+			m_Mesh = ShapeGenerator.PlaneGenerator(travel, travel, 25, 25, Axis.Up);
 
-			foreach (pb_Face face in target.faces)
-				face.material = pb_Material.DefaultMaterial;
+			foreach (Face face in m_Mesh.faces)
+				face.material = BuiltinMaterials.DefaultMaterial;
 
-			target.transform.position = new Vector3(travel * .5f, 0f, travel * .5f);
+			m_Mesh.transform.position = new Vector3(travel * .5f, 0f, travel * .5f);
 
-			// Rebuild the mesh (apply pb_Object data to UnityEngine.Mesh)
-			target.ToMesh();
+			// Rebuild the mesh (apply ProBuilderMesh data to UnityEngine.Mesh)
+			m_Mesh.ToMesh();
 
 			// Rebuild UVs, Colors, Collisions, Normals, and Tangents
-			target.Refresh();
+			m_Mesh.Refresh();
 
 			// Orient the camera in a good position
 			Camera cam = Camera.main;
@@ -59,7 +60,7 @@ namespace ProBuilder.Examples
 
 			transform.position = position;
 
-			if (target == null)
+			if (m_Mesh == null)
 			{
 				Debug.LogWarning("Missing the ProBuilder Mesh target!");
 				return;
@@ -67,44 +68,43 @@ namespace ProBuilder.Examples
 
 			// instead of testing distance by converting each face's center to world space,
 			// convert the world space of this object to the pb-Object local transform.
-			Vector3 pbRelativePosition = target.transform.InverseTransformPoint(transform.position);
+			Vector3 pbRelativePosition = m_Mesh.transform.InverseTransformPoint(transform.position);
 
 			// reset the last colored face to white
-			if (nearest != null)
-				target.SetFaceColor(nearest, Color.white);
+			if (m_NearestFace != null)
+				m_Mesh.SetFaceColor(m_NearestFace, Color.white);
 
-			// iterate each face in the pb_Object looking for the one nearest
-			// to this object.
-			int faceCount = target.faces.Length;
+			// iterate each face in the ProBuilderMesh looking for the one nearest to this object.
+			int faceCount = m_Mesh.faces.Count;
 			float smallestDistance = Mathf.Infinity;
-			nearest = target.faces[0];
+			m_NearestFace = m_Mesh.faces[0];
 
 			for (int i = 0; i < faceCount; i++)
 			{
-				float distance = Vector3.Distance(pbRelativePosition, FaceCenter(target, target.faces[i]));
+				float distance = Vector3.Distance(pbRelativePosition, FaceCenter(m_Mesh, m_Mesh.faces[i]));
 
 				if (distance < smallestDistance)
 				{
 					smallestDistance = distance;
-					nearest = target.faces[i];
+					m_NearestFace = m_Mesh.faces[i];
 				}
 			}
 
 			// Set a single face's vertex colors.  If you're updating more than one face, consider using
-			// the pb_Object.SetColors(Color[] colors); function instead.
-			target.SetFaceColor(nearest, Color.blue);
+			// the ProBuilderMesh.SetColors(Color[] colors); function instead.
+			m_Mesh.SetFaceColor(m_NearestFace, Color.blue);
 
 			// Apply the stored vertex color array to the Unity mesh.
-			target.Refresh(RefreshMask.Colors);
+			m_Mesh.Refresh(RefreshMask.Colors);
 		}
 
 		/**
 		 *	Returns the average of each vertex position in a face.
 		 *	In local space.
 		 */
-		private Vector3 FaceCenter(pb_Object pb, pb_Face face)
+		Vector3 FaceCenter(ProBuilderMesh pb, Face face)
 		{
-			Vector3[] vertices = pb.vertices;
+			var vertices = pb.positions;
 
 			Vector3 average = Vector3.zero;
 
@@ -113,14 +113,14 @@ namespace ProBuilder.Examples
 			// make up the triangles. Ex:
 			// tris = {0, 1, 2, 2, 3, 0}
 			// distinct indices = {0, 1, 2, 3}
-			foreach (int index in face.distinctIndices)
+			foreach (int index in face.distinctIndexes)
 			{
 				average.x += vertices[index].x;
 				average.y += vertices[index].y;
 				average.z += vertices[index].z;
 			}
 
-			float len = (float) face.distinctIndices.Length;
+			var len = (float) face.distinctIndexes.Count;
 
 			average.x /= len;
 			average.y /= len;

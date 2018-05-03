@@ -1,20 +1,20 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using ProBuilder.Core;
+using UnityEngine.ProBuilder;
 using UnityEngine;
 
 public class SetFaceMaterial : MonoBehaviour
 {
 	public Material[] materials;
 	int m_MaterialIndex = 0;
-	pb_Object selectedObject;
-	pb_Face selectedFace;
+	ProBuilderMesh m_SelectedObject;
+	Face m_SelectedFace;
 
 	void OnEnable()
 	{
 		// On entering scene, rebuild all probuilder meshes to their uncompressed state. The reason is that the raycasting
 		// function depends on the UnityEngine.Mesh representation matching the ProBuilder Mesh state.
-		foreach (var pb in FindObjectsOfType<pb_Object>())
+		foreach (var pb in FindObjectsOfType<ProBuilderMesh>())
 		{
 			pb.ToMesh();
 			pb.Refresh();
@@ -23,35 +23,35 @@ public class SetFaceMaterial : MonoBehaviour
 
 	void Update()
 	{
-		if (Input.GetMouseButtonUp(0) && FaceRaycast(Input.mousePosition, out selectedObject, out selectedFace))
+		if (Input.GetMouseButtonUp(0) && FaceRaycast(Input.mousePosition))
 		{
-			// Materials are set per-face, and pb_Object handles merging alike faces to a single submesh.
-			selectedFace.material = materials[(m_MaterialIndex++) % materials.Length];
+			// Materials are set per-face, and ProBuilderMesh handles merging alike faces to a single submesh.
+			m_SelectedFace.material = materials[(m_MaterialIndex++) % materials.Length];
 
 			// Rebuild the mesh submeshes and vertices
-			selectedObject.ToMesh();
+			m_SelectedObject.ToMesh();
 
 			// Rebuildd UVs, normals, tangents, collisions.
-			selectedObject.Refresh();
+			m_SelectedObject.Refresh();
 		}
 	}
 
-	bool FaceRaycast(Vector2 mouse, out pb_Object pb, out pb_Face face)
+	bool FaceRaycast(Vector2 mouse)
 	{
+		m_SelectedObject = null;
+		m_SelectedFace = null;
+
 		var ray = Camera.main.ScreenPointToRay(mouse);
 		RaycastHit rayHit;
 
 		if( Physics.Raycast(ray.origin, ray.direction, out rayHit))
 		{
-			pb = rayHit.transform.gameObject.GetComponent<pb_Object>();
+			m_SelectedObject = rayHit.transform.gameObject.GetComponent<ProBuilderMesh>();
 
-			if (pb == null)
-			{
-				face = null;
+			if (m_SelectedObject == null)
 				return false;
-			}
 
-			Mesh m = pb.GetComponent<MeshFilter>().sharedMesh;
+			Mesh m = m_SelectedObject.GetComponent<MeshFilter>().sharedMesh;
 
 			int[] tri = new int[3] {
 				m.triangles[rayHit.triangleIndex * 3 + 0],
@@ -59,11 +59,9 @@ public class SetFaceMaterial : MonoBehaviour
 				m.triangles[rayHit.triangleIndex * 3 + 2]
 			};
 
-			return pb.FaceWithTriangle(tri, out face);
+			m_SelectedFace = m_SelectedObject.FaceWithTriangle(tri);
+			return m_SelectedFace != null;
 		}
-
-		pb = null;
-		face = null;
 
 		return false;
 	}

@@ -29,10 +29,10 @@ namespace ProBuilder.EditorExamples
 		}
 
 		/// <summary>
-		/// When a new object is created this function is called with a reference to the pb_Object last built.
+		/// When a new object is created this function is called with a reference to the ProBuilderMesh last built.
 		/// </summary>
 		/// <param name="pb"></param>
-		static void OnProBuilderObjectCreated(pb_Object pb)
+		static void OnProBuilderObjectCreated(ProBuilderMesh pb)
 		{
 			pb_UnwrapParameters up = pb.unwrapParameters;
 			up.hardAngle = 88f; // range: 1f, 180f
