@@ -8,7 +8,7 @@ using MeshUtility = UnityEditor.MeshUtility;
 namespace ProBuilder.EditorExamples
 {
 	/// <summary>
-	/// This script demonstrates one use case for the pb_EditorUtility.onMeshCompiled delegate.
+	/// This script demonstrates one use case for the pb_EditorUtility.onMeshOptimized delegate.
 	/// Whenever ProBuilder compiles a mesh it removes the colors, tangents, and uv attributes.
 	/// </summary>
 	[InitializeOnLoad]
@@ -19,12 +19,12 @@ namespace ProBuilder.EditorExamples
 		/// </summary>
 		static ClearUnusedAttributes()
 		{
-			EditorMeshUtility.onMeshCompiled += OnMeshCompiled;
+			EditorMeshUtility.onMeshOptimized += OnMeshCompiled;
 		}
 
 		~ClearUnusedAttributes()
 		{
-			EditorMeshUtility.onMeshCompiled -= OnMeshCompiled;
+			EditorMeshUtility.onMeshOptimized -= OnMeshCompiled;
 		}
 
 		/// <summary>

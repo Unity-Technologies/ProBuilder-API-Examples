@@ -155,7 +155,7 @@ namespace ProBuilder.Examples
 			// copies of the sharedIndices.
 			for (int i = 0; i < shell.Length; ++i)
 				outsides[i] = new FaceRef(shell[i],
-					ProBuilderMath.Normal(ico, shell[i]),
+					UnityEngine.ProBuilder.Math.Normal(ico, shell[i]),
 					ico.sharedIndexes.AllIndexesWithValues(lookup, shell[i].distinctIndexes).ToArray()
 				);
 

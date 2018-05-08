@@ -49,7 +49,7 @@ namespace ProBuilder.EditorExamples
 			ProBuilderEditor.onVertexMovementFinish += OnVertexMovementFinish;
 
 			// Called when the Unity mesh is rebuilt from ProBuilder mesh data.
-			EditorMeshUtility.onMeshCompiled += OnMeshCompiled;
+			EditorMeshUtility.onMeshOptimized += OnMeshCompiled;
 		}
 
 		void OnDisable()
@@ -59,7 +59,7 @@ namespace ProBuilder.EditorExamples
 			ProBuilderEditor.onSelectionUpdate -= OnSelectionUpdate;
 			ProBuilderEditor.onVertexMovementBegin -= OnVertexMovementBegin;
 			ProBuilderEditor.onVertexMovementFinish -= OnVertexMovementFinish;
-			EditorMeshUtility.onMeshCompiled -= OnMeshCompiled;
+			EditorMeshUtility.onMeshOptimized -= OnMeshCompiled;
 		}
 
 		void OnProBuilderObjectCreated(ProBuilderMesh pb)

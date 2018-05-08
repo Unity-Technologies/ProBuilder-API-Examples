@@ -150,7 +150,7 @@ namespace ProBuilder.Examples
 							return;
 						}
 
-						Vector3 localNormal = ProBuilderMath.Normal(m_CurrentSelection.mesh, m_CurrentSelection.face);
+						Vector3 localNormal = UnityEngine.ProBuilder.Math.Normal(m_CurrentSelection.mesh, m_CurrentSelection.face);
 
 						if (Input.GetKey(KeyCode.LeftShift))
 							m_CurrentSelection.mesh.TranslateVertices(m_CurrentSelection.face.distinctIndexes, localNormal.normalized * -.5f);
@@ -210,7 +210,7 @@ namespace ProBuilder.Examples
 				indices[i] = i;
 
 			// Now go through and move the verts we just grabbed out about .1m from the original face.
-			Vector3 normal = ProBuilderMath.Normal(verts);
+			Vector3 normal = UnityEngine.ProBuilder.Math.Normal(verts);
 
 			for (int i = 0; i < verts.Length; i++)
 				verts[i] += normal.normalized * .01f;
