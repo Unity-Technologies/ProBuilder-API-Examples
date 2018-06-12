@@ -104,7 +104,7 @@ namespace ProBuilder.Examples
 		 */
 		Vector3 FaceCenter(ProBuilderMesh pb, Face face)
 		{
-			var vertices = pb.positions;
+			var vertexes = pb.positions;
 
 			Vector3 average = Vector3.zero;
 
@@ -115,9 +115,9 @@ namespace ProBuilder.Examples
 			// distinct indices = {0, 1, 2, 3}
 			foreach (int index in face.distinctIndexes)
 			{
-				average.x += vertices[index].x;
-				average.y += vertices[index].y;
-				average.z += vertices[index].z;
+				average.x += vertexes[index].x;
+				average.y += vertexes[index].y;
+				average.z += vertexes[index].z;
 			}
 
 			var len = (float) face.distinctIndexes.Count;

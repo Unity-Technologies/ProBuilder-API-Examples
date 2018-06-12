@@ -26,7 +26,7 @@ namespace ProBuilder.Examples
 		{
 			public Face face;
 			public Vector3 nrm;		// face normal
-			public int[] indices;	// all vertex indices (including shared connected vertices)
+			public int[] indices;	// all vertex indices (including shared connected vertexes)
 
 			public FaceRef(Face f, Vector3 n, int[] i)
 			{
@@ -40,7 +40,7 @@ namespace ProBuilder.Examples
 		FaceRef[] outsides;
 
 		// Keep a copy of the original vertex array to calculate the distance from origin.
-		Vector3[] original_vertices, displaced_vertices;
+		Vector3[] m_VertexOrigins, m_VertexDisplacements;
 
 		// The radius of the mesh icosphere on instantiation.
 		[Range(1f, 10f)]
@@ -142,14 +142,13 @@ namespace ProBuilder.Examples
 			ico.Extrude(shell, ExtrudeMethod.IndividualFaces, startingExtrusion);
 
 			// ToMesh builds the mesh positions, submesh, and triangle arrays.  Call after adding
-			// or deleting vertices, or changing face properties.
+			// or deleting vertexes, or changing face properties.
 			ico.ToMesh();
 
 			// Refresh builds the normals, tangents, and UVs.
 			ico.Refresh();
 
 			outsides = new FaceRef[shell.Length];
-			Dictionary<int, int> lookup = ico.sharedIndexes.ToDictionary();
 
 			// Populate the outsides[] cache.  This is a reference to the tops of each extruded column, including
 			// copies of the sharedIndices.
@@ -160,10 +159,10 @@ namespace ProBuilder.Examples
 				);
 
 			// Store copy of positions array un-modified
-			original_vertices = ico.positions.ToArray();
+			m_VertexOrigins = ico.positions.ToArray();
 
-			// displaced_vertices should mirror icosphere mesh vertices.
-			displaced_vertices = ico.positions.ToArray();
+			// displaced_vertices should mirror icosphere mesh vertexes.
+			m_VertexDisplacements = ico.positions.ToArray();
 
 			icoMesh = ico.GetComponent<MeshFilter>().sharedMesh;
 			icoTransform = ico.transform;
@@ -199,8 +198,8 @@ namespace ProBuilder.Examples
 			rms = RMS(data);
 
 			/**
-			 * For each face, translate the vertices some distance depending on the frequency range assigned.
-			 * Not using the TranslateVertices() ProBuilder extension method because as a convenience, that method
+			 * For each face, translate the vertexes some distance depending on the frequency range assigned.
+			 * Not using the TranslateVertexes() ProBuilder extension method because as a convenience, that method
 			 * gathers the sharedIndices per-face on every call, which while not tremondously expensive in most
 			 * contexts, is far too slow for use when dealing with audio, and especially so when the mesh is
 			 * somewhat large.
@@ -215,7 +214,7 @@ namespace ProBuilder.Examples
 
 				foreach(int t in outsides[i].indices)
 				{
-					displaced_vertices[t] = original_vertices[t] + displacement;
+					m_VertexDisplacements[t] = m_VertexOrigins[t] + displacement;
 				}
 			}
 
@@ -252,7 +251,7 @@ namespace ProBuilder.Examples
 			System.Array.Copy(data, data_history, WAVEFORM_SAMPLES);
 			rms_history = rms;
 
-			icoMesh.vertices = displaced_vertices;
+			icoMesh.vertices = m_VertexDisplacements;
 		}
 
 		/**

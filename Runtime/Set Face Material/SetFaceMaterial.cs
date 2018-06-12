@@ -29,7 +29,7 @@ public class SetFaceMaterial : MonoBehaviour
 			// Materials are set per-face, and ProBuilderMesh handles merging alike faces to a single submesh.
 			m_SelectedFace.material = materials[(m_MaterialIndex++) % materials.Length];
 
-			// Rebuild the mesh submeshes and vertices
+			// Rebuild the mesh submeshes and vertexes
 			m_SelectedObject.ToMesh();
 
 			// Rebuildd UVs, normals, tangents, collisions.

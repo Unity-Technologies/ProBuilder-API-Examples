@@ -72,18 +72,18 @@ namespace ProBuilder.ExampleActions
 			return false;
 		}
 
-		public override MenuActionState AltState()
+		protected override MenuActionState OptionsMenuState()
 		{
 			return MenuActionState.VisibleAndEnabled;
 		}
 
-		public override void OnSettingsEnable()
+		protected override void OnSettingsEnable()
 		{
 			if (showPreview)
 				DoAction();
 		}
 
-		public override void OnSettingsGUI()
+		protected override void OnSettingsGUI()
 		{
 			GUILayout.Label("Create Shadow Volume Options", EditorStyles.boldLabel);
 

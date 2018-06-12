@@ -35,7 +35,7 @@ namespace ProBuilder.Examples
 				points[i] = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * Random.Range(m_RadiusMin, m_RadiusMax);
 			}
 
-			// CreateShapeFromPolygon is an extension method that sets the pb_Object mesh data with vertices and faces
+			// CreateShapeFromPolygon is an extension method that sets the pb_Object mesh data with vertexes and faces
 			// generated from a polygon path.
 			m_Mesh.CreateShapeFromPolygon(points, m_Height, m_FlipNormals);
 		}

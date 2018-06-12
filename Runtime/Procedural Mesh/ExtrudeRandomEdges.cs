@@ -17,6 +17,7 @@ namespace ProBuilder.Examples
 		ProBuilderMesh pb;
 		Face lastExtrudedFace = null;
 		public float distance = 1f;
+		static int[] s_ExtrudeEdge = new int[2];
 
 		// Build a starting point (in this case, a quad)
 		void Start()
@@ -46,7 +47,7 @@ namespace ProBuilder.Examples
 			Edge sourceEdge = nonManifoldEdges[rand];
 
 			// get the direction this edge should extrude in
-			Vector3 dir = ((pb.positions[sourceEdge.x] + pb.positions[sourceEdge.y]) * .5f) -
+			Vector3 dir = ((pb.positions[sourceEdge.a] + pb.positions[sourceEdge.b]) * .5f) -
 			              sourceFace.distinctIndexes.Average(x => pb.positions[x]);
 			dir.Normalize();
 
@@ -55,8 +56,11 @@ namespace ProBuilder.Examples
 			// get the last extruded face
 			lastExtrudedFace = pb.faces.Last();
 
-			// translate the vertices-
-			pb.TranslateVertices(extrudedEdges[0].ToArray(), dir * distance);
+			// translate the vertices
+			s_ExtrudeEdge[0] = extrudedEdges[0].a;
+			s_ExtrudeEdge[1] = extrudedEdges[0].b;
+			
+			pb.TranslateVertexes(s_ExtrudeEdge, dir * distance);
 
 			// rebuild mesh with new geometry added by extrude
 			pb.ToMesh();

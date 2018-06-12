@@ -153,9 +153,9 @@ namespace ProBuilder.Examples
 						Vector3 localNormal = UnityEngine.ProBuilder.Math.Normal(m_CurrentSelection.mesh, m_CurrentSelection.face);
 
 						if (Input.GetKey(KeyCode.LeftShift))
-							m_CurrentSelection.mesh.TranslateVertices(m_CurrentSelection.face.distinctIndexes, localNormal.normalized * -.5f);
+							m_CurrentSelection.mesh.TranslateVertexes(m_CurrentSelection.face.distinctIndexes, localNormal.normalized * -.5f);
 						else
-							m_CurrentSelection.mesh.TranslateVertices(m_CurrentSelection.face.distinctIndexes, localNormal.normalized * .5f);
+							m_CurrentSelection.mesh.TranslateVertexes(m_CurrentSelection.face.distinctIndexes, localNormal.normalized * .5f);
 
 						// Refresh will update the Collision mesh volume, face UVs as applicatble, and normal information.
 						m_CurrentSelection.mesh.Refresh();
@@ -199,7 +199,7 @@ namespace ProBuilder.Examples
 
 		void RefreshSelectedFacePreview()
 		{
-			// Copy the currently selected vertices in world space.
+			// Copy the currently selected vertexes in world space.
 			// World space so that we don't have to apply transforms
 			// to match the current selection.
 			var trs = m_CurrentSelection.mesh.transform;
@@ -222,7 +222,7 @@ namespace ProBuilder.Examples
 			if (m_PreviewMesh)
 				Destroy(m_PreviewMesh.gameObject);
 
-			m_PreviewMesh = ProBuilderMesh.CreateInstanceWithVerticesFaces(verts, new Face[] { new Face(indices) });
+			m_PreviewMesh = ProBuilderMesh.CreateInstanceWithVertexesFaces(verts, new Face[] { new Face(indices) });
 
 			foreach (var face in m_PreviewMesh.faces)
 				face.material = m_PreviewMaterial;

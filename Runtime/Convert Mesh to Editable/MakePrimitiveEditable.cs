@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace ProBuilder.Examples
 {
-	class MakePrimitiveEditable : MonoBehaviour
+	public class MakePrimitiveEditable : MonoBehaviour
 	{
 		public MeshFilter nonProBuilderMesh;
 
@@ -23,7 +23,7 @@ namespace ProBuilder.Examples
 
 			// Import from a GameObject - in this case we're loading and assigning to the same GameObject, but you may
 			// load and apply to different Objects as well.
-			importer.Import(go);
+			importer.Import(go.GetComponent<MeshFilter>().sharedMesh, go.GetComponent<MeshRenderer>().sharedMaterials);
 
 			// Since we're loading and setting from the same object, it is necessary to create a new mesh to avoid
 			// overwriting the mesh that is being read from.
