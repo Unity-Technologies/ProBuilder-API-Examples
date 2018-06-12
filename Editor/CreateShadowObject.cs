@@ -11,6 +11,7 @@ using UnityEngine.ProBuilder;
 using UnityEngine.ProBuilder.MeshOperations;
 using UnityEditor.ProBuilder;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine.Rendering;
 
 // When creating your own actions please use your own namespace.
@@ -59,7 +60,7 @@ namespace ProBuilder.ExampleActions
 		// Determines if the action should be enabled or grayed out.
 		public override bool IsEnabled()
 		{
-			return MeshSelection.Top().Length > 0;
+			return MeshSelection.Top().Any();
 		}
 
 		/// <summary>
@@ -117,7 +118,6 @@ namespace ProBuilder.ExampleActions
 			{
 				DoAction();
 				SceneView.RepaintAll();
-				MenuOption.CloseAll();
 			}
 		}
 
@@ -169,7 +169,7 @@ namespace ProBuilder.ExampleActions
 			// outdated meshes and throw errors.
 			ProBuilderEditor.Refresh();
 
-			return new ActionResult(Status.Success, "Create Shadow Object");
+			return new ActionResult(ActionResult.Status.Success, "Create Shadow Object");
 		}
 
 		ProBuilderMesh GetShadowObject(ProBuilderMesh pb)

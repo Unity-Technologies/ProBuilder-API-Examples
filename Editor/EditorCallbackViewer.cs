@@ -32,34 +32,34 @@ namespace ProBuilder.EditorExamples
 		void OnEnable()
 		{
 			// Delegate for Top/Geometry/Texture mode changes.
-			ProBuilderEditor.onEditLevelChanged += OnEditLevelChanged;
+			ProBuilderEditor.editLevelChanged += OnEditLevelChanged;
 
 			// Called when a new ProBuilder object is created.
 			// note - this was added in ProBuilder 2.5.1
-			ProBuilderEditorUtility.onObjectCreated += OnProBuilderObjectCreated;
+			ProBuilderEditorUtility.meshCreated += OnProBuilderObjectCreated;
 
 			// Called when the ProBuilder selection changes (can be object or element change).
 			// Also called when the geometry is modified by ProBuilder.
-			ProBuilderEditor.onSelectionUpdate += OnSelectionUpdate;
+			ProBuilderEditor.selectionUpdated += OnSelectionUpdate;
 
 			// Called when vertices are about to be modified.
-			ProBuilderEditor.onVertexMovementBegin += OnVertexMovementBegin;
+			ProBuilderEditor.beforeMeshModification += OnVertexMovementBegin;
 
 			// Called when vertices have been moved by ProBuilder.
-			ProBuilderEditor.onVertexMovementFinish += OnVertexMovementFinish;
+			ProBuilderEditor.afterMeshModification += OnVertexMovementFinish;
 
 			// Called when the Unity mesh is rebuilt from ProBuilder mesh data.
-			EditorMeshUtility.onMeshOptimized += OnMeshCompiled;
+			EditorMeshUtility.meshOptimized += OnMeshCompiled;
 		}
 
 		void OnDisable()
 		{
-			ProBuilderEditor.onEditLevelChanged -= OnEditLevelChanged;
-			ProBuilderEditorUtility.onObjectCreated -= OnProBuilderObjectCreated;
-			ProBuilderEditor.onSelectionUpdate -= OnSelectionUpdate;
-			ProBuilderEditor.onVertexMovementBegin -= OnVertexMovementBegin;
-			ProBuilderEditor.onVertexMovementFinish -= OnVertexMovementFinish;
-			EditorMeshUtility.onMeshOptimized -= OnMeshCompiled;
+			ProBuilderEditor.editLevelChanged -= OnEditLevelChanged;
+			ProBuilderEditorUtility.meshCreated -= OnProBuilderObjectCreated;
+			ProBuilderEditor.selectionUpdated -= OnSelectionUpdate;
+			ProBuilderEditor.beforeMeshModification -= OnVertexMovementBegin;
+			ProBuilderEditor.afterMeshModification -= OnVertexMovementFinish;
+			EditorMeshUtility.meshOptimized -= OnMeshCompiled;
 		}
 
 		void OnProBuilderObjectCreated(ProBuilderMesh pb)

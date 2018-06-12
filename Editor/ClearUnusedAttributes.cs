@@ -19,12 +19,12 @@ namespace ProBuilder.EditorExamples
 		/// </summary>
 		static ClearUnusedAttributes()
 		{
-			EditorMeshUtility.onMeshOptimized += OnMeshCompiled;
+			EditorMeshUtility.meshOptimized += OnMeshCompiled;
 		}
 
 		~ClearUnusedAttributes()
 		{
-			EditorMeshUtility.onMeshOptimized -= OnMeshCompiled;
+			EditorMeshUtility.meshOptimized -= OnMeshCompiled;
 		}
 
 		/// <summary>

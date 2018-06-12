@@ -69,11 +69,11 @@ namespace ProBuilder.ExampleActions
 		/// <returns>An ActionResult indicating the success/failure of action.</returns>
 		public override ActionResult DoAction()
 		{
-			Undo.RecordObjects(MeshSelection.Top(), "Make Double-Sided Faces");
+			Undo.RecordObjects(MeshSelection.Top().ToArray(), "Make Double-Sided Faces");
 
 			foreach (ProBuilderMesh pb in MeshSelection.Top())
 			{
-				AppendDelete.DuplicateAndFlip(pb, pb.GetSelectedFaces());
+				AppendElements.DuplicateAndFlip(pb, pb.GetSelectedFaces());
 				pb.ToMesh();
 				pb.Refresh();
 				pb.Optimize();
@@ -82,7 +82,7 @@ namespace ProBuilder.ExampleActions
 			// Rebuild the ProBuilderEditor caches
 			ProBuilderEditor.Refresh();
 
-			return new ActionResult(Status.Success, "Make Faces Double-Sided");
+			return new ActionResult(ActionResult.Status.Success, "Make Faces Double-Sided");
 		}
 	}
 }
