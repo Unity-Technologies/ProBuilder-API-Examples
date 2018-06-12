@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine.ProBuilder;
 using UnityEngine;
 
@@ -59,7 +60,7 @@ public class SetFaceMaterial : MonoBehaviour
 				m.triangles[rayHit.triangleIndex * 3 + 2]
 			};
 
-			m_SelectedFace = m_SelectedObject.FaceWithTriangle(tri);
+			m_SelectedFace = m_SelectedObject.faces.FirstOrDefault(x => x.Contains(tri[0], tri[1], tri[2]));
 			return m_SelectedFace != null;
 		}
 

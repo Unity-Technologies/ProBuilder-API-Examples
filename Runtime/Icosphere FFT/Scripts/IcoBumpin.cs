@@ -156,7 +156,7 @@ namespace ProBuilder.Examples
 			for (int i = 0; i < shell.Length; ++i)
 				outsides[i] = new FaceRef(shell[i],
 					UnityEngine.ProBuilder.Math.Normal(ico, shell[i]),
-					ico.sharedIndexes.AllIndexesWithValues(lookup, shell[i].distinctIndexes).ToArray()
+					ico.sharedIndexes.AllIndexesWithValues(shell[i].distinctIndexes).ToArray()
 				);
 
 			// Store copy of positions array un-modified

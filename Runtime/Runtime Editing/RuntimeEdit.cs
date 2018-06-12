@@ -189,7 +189,7 @@ namespace ProBuilder.Examples
 				};
 
 				m_CurrentSelection.mesh = hitpb;
-				m_CurrentSelection.face = hitpb.FaceWithTriangle(tri);
+				m_CurrentSelection.face = hitpb.faces.FirstOrDefault(x => x.Contains(tri[0], tri[1], tri[2]));
 
 				return m_CurrentSelection.face != null;
 			}
@@ -202,15 +202,19 @@ namespace ProBuilder.Examples
 			// Copy the currently selected vertices in world space.
 			// World space so that we don't have to apply transforms
 			// to match the current selection.
-			Vector3[] verts = m_CurrentSelection.mesh.VerticesInWorldSpace(m_CurrentSelection.face.indexes);
+			var trs = m_CurrentSelection.mesh.transform;
+			int[] indices = m_CurrentSelection.face.indexes.ToArray();
+			var positions = m_CurrentSelection.mesh.positions;
+			var verts = new Vector3[indices.Length];
 
-			// face.indices == triangles, so wind the face to match
-			int[] indices = new int[verts.Length];
-			for (int i = 0; i < indices.Length; i++)
+			for (int i = 0, c = indices.Length; i < c; i++)
+			{
+				verts[i] = trs.TransformPoint(positions[i]);
 				indices[i] = i;
+			}
 
 			// Now go through and move the verts we just grabbed out about .1m from the original face.
-			Vector3 normal = UnityEngine.ProBuilder.Math.Normal(verts);
+			Vector3 normal = trs.TransformDirection(Math.Normal(m_CurrentSelection.mesh, m_CurrentSelection.face));
 
 			for (int i = 0; i < verts.Length; i++)
 				verts[i] += normal.normalized * .01f;
@@ -219,8 +223,10 @@ namespace ProBuilder.Examples
 				Destroy(m_PreviewMesh.gameObject);
 
 			m_PreviewMesh = ProBuilderMesh.CreateInstanceWithVerticesFaces(verts, new Face[] { new Face(indices) });
+
 			foreach (var face in m_PreviewMesh.faces)
 				face.material = m_PreviewMaterial;
+
 			m_PreviewMesh.ToMesh();
 			m_PreviewMesh.Refresh();
 		}
