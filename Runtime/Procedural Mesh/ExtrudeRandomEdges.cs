@@ -22,9 +22,8 @@ namespace ProBuilder.Examples
 		// Build a starting point (in this case, a quad)
 		void Start()
 		{
-			pb = ShapeGenerator.PlaneGenerator(1, 1, 0, 0, Axis.Up);
-			foreach (var f in pb.faces) f.material = BuiltinMaterials.DefaultMaterial;
-			lastExtrudedFace = pb.faces[0];
+			pb = ShapeGenerator.GeneratePlane(1, 1, 0, 0, Axis.Up);
+			lastExtrudedFace = pb.faces.First();
 		}
 
 		void OnGUI()
@@ -59,7 +58,7 @@ namespace ProBuilder.Examples
 			// translate the vertices
 			s_ExtrudeEdge[0] = extrudedEdges[0].a;
 			s_ExtrudeEdge[1] = extrudedEdges[0].b;
-			
+
 			pb.TranslateVertexes(s_ExtrudeEdge, dir * distance);
 
 			// rebuild mesh with new geometry added by extrude

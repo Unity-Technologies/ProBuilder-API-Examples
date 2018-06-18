@@ -32,7 +32,7 @@ namespace ProBuilder.Examples
 			m_Mesh = ShapeGenerator.PlaneGenerator(travel, travel, 25, 25, Axis.Up);
 
 			foreach (Face face in m_Mesh.faces)
-				face.material = BuiltinMaterials.DefaultMaterial;
+				face.material = BuiltinMaterials.defaultMaterial;
 
 			m_Mesh.transform.position = new Vector3(travel * .5f, 0f, travel * .5f);
 

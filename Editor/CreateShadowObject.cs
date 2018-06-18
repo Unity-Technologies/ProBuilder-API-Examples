@@ -172,18 +172,18 @@ namespace ProBuilder.ExampleActions
 			return new ActionResult(ActionResult.Status.Success, "Create Shadow Object");
 		}
 
-		ProBuilderMesh GetShadowObject(ProBuilderMesh pb)
+		ProBuilderMesh GetShadowObject(ProBuilderMesh mesh)
 		{
-			if (pb == null || pb.name.Contains("-ShadowVolume"))
+			if (mesh == null || mesh.name.Contains("-ShadowVolume"))
 				return null;
 
 			ProBuilderMesh shadow;
 
-			for (int i = 0; i < pb.transform.childCount; i++)
+			for (int i = 0; i < mesh.transform.childCount; i++)
 			{
-				Transform t = pb.transform.GetChild(i);
+				Transform t = mesh.transform.GetChild(i);
 
-				if (t.name.Equals(string.Format("{0}-ShadowVolume", pb.name)))
+				if (t.name.Equals(string.Format("{0}-ShadowVolume", mesh.name)))
 				{
 					shadow = t.GetComponent<ProBuilderMesh>();
 
@@ -191,21 +191,23 @@ namespace ProBuilder.ExampleActions
 					{
 						Undo.RecordObject(shadow, "Update Shadow Object");
 
-						var faces = new Face[pb.faces.Count];
+						var faceCount = mesh.faceCount;
+						var meshFaces = mesh.faces as Face[] ?? mesh.faces.ToArray();
+						var faces = new Face[faceCount];
 
-						for (int nn = 0, cc = pb.faces.Count; nn < cc; nn++)
-							faces[nn] = new Face(pb.faces[nn]);
+						for (int nn = 0, cc = faceCount; nn < cc; nn++)
+							faces[nn] = new Face(meshFaces[nn]);
 
-						shadow.GeometryWithVerticesFaces(pb.positions, faces);
+						shadow.RebuildWithPositionsAndFaces(mesh.positions, faces);
 						return shadow;
 					}
 				}
 			}
 
 			shadow = new GameObject().AddComponent<ProBuilderMesh>();
-			shadow.CopyFrom(pb);
-			shadow.name = string.Format("{0}-ShadowVolume", pb.name);
-			shadow.transform.SetParent(pb.transform, false);
+			shadow.CopyFrom(mesh);
+			shadow.name = string.Format("{0}-ShadowVolume", mesh.name);
+			shadow.transform.SetParent(mesh.transform, false);
 			Undo.RegisterCreatedObjectUndo(shadow.gameObject, "Create Shadow Object");
 			return shadow;
 		}

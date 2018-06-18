@@ -122,7 +122,7 @@ namespace ProBuilder.Examples
 				missingClipWarning.SetActive(true);
 
 			// Create a new icosphere.
-			ico = ShapeGenerator.IcosahedronGenerator(icoRadius, icoSubdivisions);
+			ico = ShapeGenerator.GenerateIcosahedron(icoRadius, icoSubdivisions);
 
 			// Shell is all the faces on the new icosphere.
 			var shell = ico.faces.ToArray();
@@ -154,8 +154,8 @@ namespace ProBuilder.Examples
 			// copies of the sharedIndices.
 			for (int i = 0; i < shell.Length; ++i)
 				outsides[i] = new FaceRef(shell[i],
-					UnityEngine.ProBuilder.Math.Normal(ico, shell[i]),
-					ico.sharedIndexes.AllIndexesWithValues(shell[i].distinctIndexes).ToArray()
+					Math.Normal(ico, shell[i]),
+					ico.GetCoincidentVertexes(shell[i].distinctIndexes).ToArray()
 				);
 
 			// Store copy of positions array un-modified
