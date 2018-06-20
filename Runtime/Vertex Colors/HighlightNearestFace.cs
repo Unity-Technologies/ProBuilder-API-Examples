@@ -29,10 +29,7 @@ namespace ProBuilder.Examples
 		void Start()
 		{
 			// Generate a 50x50 plane with 25 subdivisions, facing up, with no smoothing applied.
-			m_Mesh = ShapeGenerator.PlaneGenerator(travel, travel, 25, 25, Axis.Up);
-
-			foreach (Face face in m_Mesh.faces)
-				face.material = BuiltinMaterials.defaultMaterial;
+			m_Mesh = ShapeGenerator.GeneratePlane(travel, travel, 25, 25, Axis.Up);
 
 			m_Mesh.transform.position = new Vector3(travel * .5f, 0f, travel * .5f);
 
@@ -75,7 +72,7 @@ namespace ProBuilder.Examples
 				m_Mesh.SetFaceColor(m_NearestFace, Color.white);
 
 			// iterate each face in the ProBuilderMesh looking for the one nearest to this object.
-			int faceCount = m_Mesh.faces.Count;
+			int faceCount = m_Mesh.faces.Count();
 			float smallestDistance = Mathf.Infinity;
 			m_NearestFace = m_Mesh.faces[0];
 

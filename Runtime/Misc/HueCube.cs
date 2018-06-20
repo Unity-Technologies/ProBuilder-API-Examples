@@ -20,21 +20,21 @@ namespace ProBuilder.Examples
 
 			// Cycle through each unique vertex in the cube (8 total), and assign a color
 			// to the index in the sharedIndices array.
-			var sharedIndexes = mesh.sharedIndexes;
-			var sharedIndexCount = sharedIndexes.Count();
-			Color[] vertexColors = new Color[sharedIndexCount];
+			var sharedVertexes = mesh.sharedVertexes;
+			var sharedVertexCount = sharedVertexes.Count();
+			Color[] vertexColors = new Color[sharedVertexCount];
 
-			for (int i = 0; i < sharedIndexCount; i++)
-				vertexColors[i] = Color.HSVToRGB((i / (float)sharedIndexCount) * 360f, 1f, 1f);
+			for (int i = 0; i < sharedVertexCount; i++)
+				vertexColors[i] = Color.HSVToRGB((i / (float)sharedVertexCount) * 360f, 1f, 1f);
 
 			// Now go through each face (vertex colors are stored the pb_Face class) and
 			// assign the pre-calculated index color to each index in the triangles array.
 			Color[] colors = mesh.colors.ToArray();
 			int index = 0;
 
-			foreach(var sharedIndex in sharedIndexes)
+			foreach(var sharedVertex in sharedVertexes)
 			{
-				foreach(var vertex in sharedIndex)
+				foreach(var vertex in sharedVertex)
 				{
 					colors[vertex] = vertexColors[index];
 				}

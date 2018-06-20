@@ -92,7 +92,7 @@ namespace ProBuilder.Examples
 		{
 			// This creates a basic cube with ProBuilder features enabled.  See the ProBuilder.Shape enum to
 			// see all possible primitive types.
-			ProBuilderMesh mesh = ShapeGenerator.CubeGenerator(Vector3.one);
+			ProBuilderMesh mesh = ShapeGenerator.GenerateCube(Vector3.one);
 
 			// The runtime component requires that a concave mesh collider be present in order for face selection
 			// to work.
@@ -222,7 +222,7 @@ namespace ProBuilder.Examples
 			if (m_PreviewMesh)
 				Destroy(m_PreviewMesh.gameObject);
 
-			m_PreviewMesh = ProBuilderMesh.CreateInstanceWithVertexesFaces(verts, new Face[] { new Face(indices) });
+			m_PreviewMesh = ProBuilderMesh.Create(verts, new Face[] { new Face(indices) });
 
 			foreach (var face in m_PreviewMesh.faces)
 				face.material = m_PreviewMaterial;
