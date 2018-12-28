@@ -1,116 +1,67 @@
-﻿/**
- *	This script demonstrates how to create a new action that can be accessed from the
- *	ProBuilder toolbar.
- *
- *	A new menu item is registered under "Geometry" actions called "Gen. Shadows".
- */
+﻿// This script demonstrates how to create a new action that can be accessed from the ProBuilder toolbar.
+// A new menu item is registered under "Geometry" actions called "Gen. Shadows".
 
+using System.Linq;
 using UnityEngine;
 using UnityEditor;
-using ProBuilder.Core;
-using ProBuilder.MeshOperations;
-using ProBuilder.EditorCore;
-using ProBuilder.Interface;
-using System.Collections.Generic;
+using UnityEditor.ProBuilder;
+using UnityEngine.ProBuilder;
+using UnityEngine.ProBuilder.MeshOperations;
 using UnityEngine.Rendering;
 
-// When creating your own actions please use your own namespace.
+// When creating your own actions use your own namespace.
 namespace ProBuilder.ExampleActions
 {
-	// This class is responsible for loading the pb_MenuAction into the toolbar and menu.
-	[InitializeOnLoad]
-	static class RegisterShadowObjectAction
+	[ProBuilderMenuAction]
+	sealed class CreateShadowObject : MenuAction
 	{
-		// Static initializer is called when Unity loads the assembly.
-		static RegisterShadowObjectAction()
-		{
-			// This registers a new CreateShadowObject menu action with the toolbar.
-			pb_EditorToolbarLoader.RegisterMenuItem(InitCustomAction);
-		}
-
-		// Helper function to load a new menu action object.
-		static pb_MenuAction InitCustomAction()
-		{
-			return new CreateShadowObject();
-		}
-
-		// Usually you'll want to add a menu item entry for your action.
-		// https://docs.unity3d.com/ScriptReference/MenuItem.html
-		[MenuItem("Tools/ProBuilder/Object/Create Shadow Object", true)]
-		static bool MenuVerifyDoSomethingWithPbObject()
-		{
-			// Using pb_EditorToolbarLoader.GetInstance keeps MakeFacesDoubleSided as a singleton.
-			CreateShadowObject instance = pb_EditorToolbarLoader.GetInstance<CreateShadowObject>();
-			return instance != null && instance.IsEnabled();
-		}
-
-		[MenuItem("Tools/ProBuilder/Object/Create Shadow Object", false, pb_Constant.MENU_GEOMETRY + 3)]
-		static void MenuDoDoSomethingWithPbObject()
-		{
-			CreateShadowObject instance = pb_EditorToolbarLoader.GetInstance<CreateShadowObject>();
-
-			if(instance != null)
-				SceneView.lastActiveSceneView.ShowNotification(new GUIContent(instance.DoAction().notification));
-		}
-	}
-
-	/// <summary>
-	/// This is the action that will be executed. It's lifecycle is managed by pb_EditorToolbar, and registered in a
-	/// static constructor.
-	/// </summary>
-	public class CreateShadowObject : pb_MenuAction
-	{
-		public override pb_ToolbarGroup group { get { return pb_ToolbarGroup.Object; } }
+		public override ToolbarGroup group { get { return ToolbarGroup.Object; } }
 		public override Texture2D icon { get { return null; } }
-		public override pb_TooltipContent tooltip { get { return _tooltip; } }
+		public override TooltipContent tooltip { get { return k_Tooltip; } }
 
-		GUIContent gc_volumeSize = new GUIContent("Volume Size", "How far the shadow volume extends from the base mesh.  To visualize, imagine the width of walls.\n\nYou can also select the child ShadowVolume object and turn the Shadow Casting Mode to \"One\" or \"Two\" sided to see the resulting mesh.");
+		static readonly GUIContent k_VolumeSize = new GUIContent("Volume Size", "How far the shadow volume extends from " +
+			"the base mesh.  To visualize, imagine the width of walls.\n\nYou can also select the child ShadowVolume " +
+			"object and turn the Shadow Casting Mode to \"One\" or \"Two\" sided to see the resulting mesh.");
 
-		bool showPreview
+		// What to show in the hover tooltip window.  TooltipContent is similar to GUIContent, with the exception
+		// that it also includes an optional params[] char list in the constructor to define shortcut keys
+		// (ex, CMD_CONTROL, K).
+		static readonly TooltipContent k_Tooltip = new TooltipContent(
+			"Gen Shadow Obj",
+			"Creates a new ProBuilder mesh child with inverted normals that only exists to cast shadows. Use to " +
+			"create lit interior scenes with shadows from directional lights.\n\nNote that this exists largely as " +
+			"a workaround for real-time shadow light leaks. Baked shadows do not require this workaround.",
+			""
+		);
+
+		static bool showPreview
 		{
 			get { return EditorPrefs.GetBool("pb_shadowVolumePreview", true); }
 			set { EditorPrefs.SetBool("pb_shadowVolumePreview", value); }
 		}
 
-		// What to show in the hover tooltip window.  pb_TooltipContent is similar to GUIContent, with the exception
-		// that it also includes an optional params[] char list in the constructor to define shortcut keys
-		// (ex, CMD_CONTROL, K).
-		static readonly pb_TooltipContent _tooltip = new pb_TooltipContent
-		(
-			"Gen Shadow Obj",
-			"Creates a new ProBuilder mesh child with inverted normals that only exists to cast shadows.  Use to create lit interior scenes with shadows from directional lights.\n\nNote that this exists largely as a workaround for real-time shadow light leaks.  Baked shadows do not require this workaround.",
-			""	// Some combination of build settings can cause the compiler to not respection optional params in the pb_TooltipContent c'tor?
-		);
-
-		// Determines if the action should be enabled or grayed out.
-		public override bool IsEnabled()
+		// Determines if the action should be enabled or shown as disabled in the menu.
+		public override bool enabled
 		{
-			// `selection` is a helper property on pb_MenuAction that returns a pb_Object[] array from the current selection.
-			return 	selection != null &&
-					selection.Length > 0;
+			get { return MeshSelection.selectedObjectCount > 0; }
 		}
 
 		/// <summary>
 		/// Determines if the action should be loaded in the menu (ex, face actions shouldn't be shown when in vertex editing mode).
 		/// </summary>
 		/// <returns></returns>
-		public override bool IsHidden()
+		public override bool hidden
 		{
-			return false;
+			get { return false; }
 		}
 
-		public override MenuActionState AltState()
-		{
-			return MenuActionState.VisibleAndEnabled;
-		}
-
-		public override void OnSettingsEnable()
+		protected override void OnSettingsEnable()
 		{
 			if( showPreview )
 				DoAction();
 		}
 
-		public override void OnSettingsGUI()
+		protected override void OnSettingsGUI()
 		{
 			GUILayout.Label("Create Shadow Volume Options", EditorStyles.boldLabel);
 
@@ -118,7 +69,7 @@ namespace ProBuilder.ExampleActions
 
 			EditorGUI.BeginChangeCheck();
 			float volumeSize = EditorPrefs.GetFloat("pb_CreateShadowObject_volumeSize", .07f);
-			volumeSize = EditorGUILayout.Slider(gc_volumeSize, volumeSize, 0.001f, 1f);
+			volumeSize = EditorGUILayout.Slider(k_VolumeSize, volumeSize, 0.001f, 1f);
 			if( EditorGUI.EndChangeCheck() )
 				EditorPrefs.SetFloat("pb_CreateShadowObject_volumeSize", volumeSize);
 
@@ -145,7 +96,7 @@ namespace ProBuilder.ExampleActions
 			{
 				DoAction();
 				SceneView.RepaintAll();
-				pb_MenuOption.CloseAll();
+//				MenuOption.CloseAll();
 			}
 		}
 
@@ -153,20 +104,24 @@ namespace ProBuilder.ExampleActions
 		/// Perform the action.
 		/// </summary>
 		/// <returns>Return a pb_ActionResult indicating the success/failure of action.</returns>
-		public override pb_ActionResult DoAction()
+		public override ActionResult DoAction()
 		{
 			ShadowCastingMode shadowMode = (ShadowCastingMode) EditorPrefs.GetInt("pb_CreateShadowObject_shadowMode", (int) ShadowCastingMode.ShadowsOnly);
 			float extrudeDistance = EditorPrefs.GetFloat("pb_CreateShadowObject_volumeSize", .08f);
 			ExtrudeMethod extrudeMethod = (ExtrudeMethod) EditorPrefs.GetInt("pb_CreateShadowObject_extrudeMethod", (int) ExtrudeMethod.FaceNormal);
 
-			foreach(pb_Object pb in selection)
+			foreach(ProBuilderMesh mesh in MeshSelection.top)
 			{
-				pb_Object shadow = GetShadowObject(pb);
+				ProBuilderMesh shadow = GetShadowObject(mesh);
 
 				if(shadow == null)
 					continue;
 
-				foreach(pb_Face f in shadow.faces) { f.ReverseIndices(); f.manualUV = true; }
+				foreach (Face f in shadow.faces)
+				{
+					f.SetIndexes(f.indexes.Reverse().ToArray());
+					f.manualUV = true;
+				}
 				shadow.Extrude(shadow.faces, extrudeMethod, extrudeDistance);
 				shadow.ToMesh();
 				shadow.Refresh();
@@ -188,46 +143,47 @@ namespace ProBuilder.ExampleActions
 				}
 			}
 
-			// This is necessary, otherwise pb_Editor will be working with caches from
-			// outdated meshes and throw errors.
-			pb_Editor.Refresh();
+			// Refresh the Editor wireframe and working caches.
+			ProBuilderEditor.Refresh();
 
-			return new pb_ActionResult(Status.Success, "Create Shadow Object");
+			return new ActionResult(ActionResult.Status.Success, "Create Shadow Object");
 		}
 
-		private pb_Object GetShadowObject(pb_Object pb)
+		private ProBuilderMesh GetShadowObject(ProBuilderMesh mesh)
 		{
-			if(pb == null || pb.name.Contains("-ShadowVolume"))
+			if(mesh == null || mesh.name.Contains("-ShadowVolume"))
 				return null;
 
-			for(int i = 0; i < pb.transform.childCount; i++)
+			for(int i = 0; i < mesh.transform.childCount; i++)
 			{
-				Transform t = pb.transform.GetChild(i);
+				Transform t = mesh.transform.GetChild(i);
 
-				if(t.name.Equals(string.Format("{0}-ShadowVolume", pb.name)))
+				if(t.name.Equals(string.Format("{0}-ShadowVolume", mesh.name)))
 				{
-					pb_Object shadow = t.GetComponent<pb_Object>();
+					ProBuilderMesh shadow = t.GetComponent<ProBuilderMesh>();
 
 					if(shadow != null)
 					{
 						Undo.RecordObject(shadow, "Update Shadow Object");
 
-						pb_Face[] faces = new pb_Face[pb.faces.Length];
+						Face[] faces = new Face[mesh.faceCount];
 
-						for(int nn = 0; nn < pb.faces.Length; nn++)
-							faces[nn] = new pb_Face(pb.faces[nn]);
+						for(int nn = 0; nn < mesh.faceCount; nn++)
+							faces[nn] = new Face(mesh.faces[nn]);
 
-						shadow.GeometryWithVerticesFaces(pb.vertices, faces);
+						shadow.RebuildWithPositionsAndFaces(mesh.positions, faces);
+
 						return shadow;
 					}
 				}
 			}
 
-			pb_Object new_shadow = pb_Object.InitWithObject(pb);
-			new_shadow.name = string.Format("{0}-ShadowVolume", pb.name);
-			new_shadow.transform.SetParent(pb.transform, false);
-			Undo.RegisterCreatedObjectUndo(new_shadow.gameObject, "Create Shadow Object");
-			return new_shadow;
+			ProBuilderMesh newShadowMesh = ProBuilderMesh.Create();
+			newShadowMesh.CopyFrom(mesh);
+			newShadowMesh.name = string.Format("{0}-ShadowVolume", mesh.name);
+			newShadowMesh.transform.SetParent(mesh.transform, false);
+			Undo.RegisterCreatedObjectUndo(newShadowMesh.gameObject, "Create Shadow Object");
+			return newShadowMesh;
 		}
 	}
 }

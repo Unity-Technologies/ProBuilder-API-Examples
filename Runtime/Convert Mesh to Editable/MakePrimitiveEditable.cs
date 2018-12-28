@@ -1,44 +1,38 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using ProBuilder.Core;
-using ProBuilder.MeshOperations;
-using UnityEngine;
+﻿using UnityEngine;
+using UnityEngine.ProBuilder;
+using UnityEngine.ProBuilder.MeshOperations;
 
 namespace ProBuilder.Examples
 {
-
+	[RequireComponent(typeof(MeshFilter))]
 	public class MakePrimitiveEditable : MonoBehaviour
 	{
-
-		public MeshFilter nonProBuilderMesh;
-
 		void Start()
 		{
-			// Get a reference to the GameObject
-			var go = nonProBuilderMesh.gameObject;
+			var filter = GetComponent<MeshFilter>();
 
 			// Add a new uninitialized pb_Object
-			var pb = go.AddComponent<pb_Object>();
+			var mesh = gameObject.AddComponent<ProBuilderMesh>();
 
-			// Create a new ProBuilder MeshImporter
-			var importer = new pb_MeshImporter(pb);
+			// Create a new MeshImporter
+			var importer = new MeshImporter(mesh);
 
-			// Import from a GameObject - in this case we're loading and assigning to the same GameObject, but you may
+			// Import from a GameObject. In this case we're loading and assigning to the same GameObject, but you may
 			// load and apply to different Objects as well.
-			importer.Import(go);
+			importer.Import(filter.sharedMesh);
 
 			// Since we're loading and setting from the same object, it is necessary to create a new mesh to avoid
 			// overwriting the mesh that is being read from.
-			nonProBuilderMesh.sharedMesh = new Mesh();
+			filter.sharedMesh = new Mesh();
 
 			// Do something with the pb_Object. Here we're extruding every face on the object by .25.
-			pb.Extrude(pb.faces, ExtrudeMethod.IndividualFaces, .25f);
+			mesh.Extrude(mesh.faces, ExtrudeMethod.IndividualFaces, .25f);
 
 			// Apply the imported geometry to the pb_Object
-			pb.ToMesh();
+			mesh.ToMesh();
 
 			// Rebuild UVs, Collisions, Tangents, etc.
-			pb.Refresh();
+			mesh.Refresh();
 		}
 	}
 }

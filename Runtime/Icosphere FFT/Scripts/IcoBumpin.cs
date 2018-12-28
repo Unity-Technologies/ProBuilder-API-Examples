@@ -1,10 +1,9 @@
 ﻿#if UNITY_EDITOR || UNITY_STANDALONE
 using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using ProBuilder.Core;
-using ProBuilder.MeshOperations;
+using UnityEngine.ProBuilder;
+using UnityEngine.ProBuilder.MeshOperations;
 
 namespace ProBuilder.Examples
 {
@@ -12,21 +11,21 @@ namespace ProBuilder.Examples
 	[RequireComponent(typeof(AudioSource))]
 	public class IcoBumpin : MonoBehaviour
 	{
-		pb_Object ico;			// A reference to the icosphere pb_Object component
+		ProBuilderMesh ico;			// A reference to the icosphere ProBuilderMesh component
 		Mesh icoMesh;			// A reference to the icosphere mesh (cached because we access the vertex array every frame)
-		Transform icoTransform;	// A reference to the icosphere transform component.  Cached because I can't remember if GameObject.transform is still a performance drain :|
+		Transform icoTransform;	// A reference to the icosphere transform component. Cached because I can't remember if GameObject.transform is still a performance drain :|
 		AudioSource audioSource;// Cached reference to the audiosource.
 
 		/**
-		 * Holds a pb_Face, the normal of that face, and the index of every vertex that touches it (sharedIndices).
+		 * Holds a Face, the normal of that face, and the index of every vertex that touches it (sharedIndices).
 		 */
 		struct FaceRef
 		{
-			public pb_Face face;
+			public Face face;
 			public Vector3 nrm;		// face normal
 			public int[] indices;	// all vertex indices (including shared connected vertices)
 
-			public FaceRef(pb_Face f, Vector3 n, int[] i)
+			public FaceRef(Face f, Vector3 n, int[] i)
 			{
 				face = f;
 				nrm = n;
@@ -96,15 +95,15 @@ namespace ProBuilder.Examples
 		float faces_length;
 
 		const float TWOPI = 6.283185f;		// 2 * PI
-		const int WAVEFORM_SAMPLES = 1024;	// How many samples make up the waveform ring.
-		const int FFT_SAMPLES = 4096;		// How many samples are used in the FFT.  More means higher resolution.
+		const int k_WaveformSampleCount = 1024;	// How many samples make up the waveform ring.
+		const int FFT_SAMPLES = 4096;		// How many samples are used in the FFT. More means higher resolution.
 
 		// Keep copy of the last frame's sample data to average with the current when calculating
-		// deformation amounts.  Smoothes the visual effect.
+		// deformation amounts. Smoothes the visual effect.
 		float[] fft = new float[FFT_SAMPLES],
 				fft_history = new float[FFT_SAMPLES],
-				data = new float[WAVEFORM_SAMPLES],
-				data_history = new float[WAVEFORM_SAMPLES];
+				data = new float[k_WaveformSampleCount],
+				data_history = new float[k_WaveformSampleCount];
 
 		// Root mean square of raw data (volume, but not in dB).
 		float rms = 0f, rms_history = 0f;
@@ -120,49 +119,51 @@ namespace ProBuilder.Examples
 				missingClipWarning.SetActive(true);
 
 			// Create a new icosphere.
-			ico = pb_ShapeGenerator.IcosahedronGenerator(icoRadius, icoSubdivisions);
+			ico = ShapeGenerator.GenerateIcosahedron(PivotLocation.Center, icoRadius, icoSubdivisions);
 
 			// Shell is all the faces on the new icosphere.
-			pb_Face[] shell = ico.faces;
+			var shell = ico.faces;
 
-			// Materials are set per-face on pb_Object meshes.  pb_Objects will automatically
+			// Materials are set per-face on ProBuilderMesh meshes. pb_Objects will automatically
 			// condense the mesh to the smallest set of subMeshes possible based on materials.
 #if !PROTOTYPE
-			foreach(pb_Face f in shell)
+			foreach(Face f in shell)
 				f.material = material;
 #else
 			ico.gameObject.GetComponent<MeshRenderer>().sharedMaterial = material;
 #endif
 
-			// Extrude all faces on the icosphere by a small amount.  The third boolean parameter
+			// Extrude all faces on the icosphere by a small amount. The third boolean parameter
 			// specifies that extrusion should treat each face as an individual, not try to group
 			// all faces together.
 			ico.Extrude(shell, ExtrudeMethod.IndividualFaces, startingExtrusion);
 
-			// ToMesh builds the mesh positions, submesh, and triangle arrays.  Call after adding
+			// ToMesh builds the mesh positions, submesh, and triangle arrays. Call after adding
 			// or deleting vertices, or changing face properties.
 			ico.ToMesh();
 
 			// Refresh builds the normals, tangents, and UVs.
 			ico.Refresh();
 
-			outsides = new FaceRef[shell.Length];
-			Dictionary<int, int> lookup = ico.sharedIndices.ToDictionary();
+			outsides = new FaceRef[shell.Count];
+			var sharedVertexLookup = new Dictionary<int, int>();
+			SharedVertex.GetSharedVertexLookup(ico.sharedVertices, sharedVertexLookup);
 
-			// Populate the outsides[] cache.  This is a reference to the tops of each extruded column, including
+			// Populate the outsides[] cache. This is a reference to the tops of each extruded column, including
 			// copies of the sharedIndices.
-			for(int i = 0; i < shell.Length; ++i)
-				outsides[i] = new FaceRef( 	shell[i],
-											pb_Math.Normal(ico, shell[i]),
-											ico.sharedIndices.AllIndicesWithValues(lookup, shell[i].distinctIndices).ToArray()
-											);
+			for (int i = 0; i < shell.Count; ++i)
+			{
+				outsides[i] = new FaceRef(shell[i],
+					Math.Normal(ico, shell[i]),
+					ico.GetCoincidentVertices(shell[i].distinctIndexes).ToArray()
+				);
+			}
 
 			// Store copy of positions array un-modified
-			original_vertices = new Vector3[ico.vertices.Length];
-			System.Array.Copy(ico.vertices, original_vertices, ico.vertices.Length);
+			original_vertices = ico.positions.ToArray();
 
 			// displaced_vertices should mirror icosphere mesh vertices.
-			displaced_vertices = ico.vertices;
+			displaced_vertices = new Vector3[ico.vertexCount];
 
 			icoMesh = ico.GetComponent<MeshFilter>().sharedMesh;
 			icoTransform = ico.transform;
@@ -171,14 +172,8 @@ namespace ProBuilder.Examples
 
 			// Build the waveform ring.
 			icoPosition = icoTransform.position;
-#if UNITY_4_5 || UNITY_4_6 || UNITY_4_7 || UNITY_5_0 || UNITY_5_1 || UNITY_5_2 || UNITY_5_3 || UNITY_5_4
-			waveform.SetVertexCount(WAVEFORM_SAMPLES);
-#elif UNITY_5_5
-			waveform.numPositions = WAVEFORM_SAMPLES;
-#else
-			waveform.positionCount = WAVEFORM_SAMPLES;
-#endif
-
+			
+			waveform.positionCount = k_WaveformSampleCount;
 
 			if( bounceWaveform )
 				waveform.transform.parent = icoTransform;
@@ -199,7 +194,7 @@ namespace ProBuilder.Examples
 
 			/**
 			 * For each face, translate the vertices some distance depending on the frequency range assigned.
-			 * Not using the TranslateVertices() pb_Object extension method because as a convenience, that method
+			 * Not using the TranslateVertices() ProBuilderMesh extension method because as a convenience, that method
 			 * gathers the sharedIndices per-face on every call, which while not tremondously expensive in most
 			 * contexts, is far too slow for use when dealing with audio, and especially so when the mesh is
 			 * somewhat large.
@@ -221,11 +216,11 @@ namespace ProBuilder.Examples
 			Vector3 vec = Vector3.zero;
 
 			// Waveform ring
-			for(int i = 0; i < WAVEFORM_SAMPLES; i++)
+			for(int i = 0; i < k_WaveformSampleCount; i++)
 			{
-				int n = i < WAVEFORM_SAMPLES-1 ? i : 0;
-				vec.x = Mathf.Cos((float)n/WAVEFORM_SAMPLES * TWOPI) * (waveformRadius + (((data[n] + data_history[n]) * .5f) * waveformHeight));
-				vec.z = Mathf.Sin((float)n/WAVEFORM_SAMPLES * TWOPI) * (waveformRadius + (((data[n] + data_history[n]) * .5f) * waveformHeight));
+				int n = i < k_WaveformSampleCount-1 ? i : 0;
+				vec.x = Mathf.Cos((float)n/k_WaveformSampleCount * TWOPI) * (waveformRadius + (((data[n] + data_history[n]) * .5f) * waveformHeight));
+				vec.z = Mathf.Sin((float)n/k_WaveformSampleCount * TWOPI) * (waveformRadius + (((data[n] + data_history[n]) * .5f) * waveformHeight));
 
 				vec.y = 0f;
 
@@ -246,9 +241,9 @@ namespace ProBuilder.Examples
 			icoPosition.y = -verticalBounce + ((rms + rms_history) * verticalBounce);
 			icoTransform.position = icoPosition;
 
-			// Keep copy of last FFT samples so we can average with the current.  Smoothes the movement.
+			// Keep copy of last FFT samples so we can average with the current. Smoothes the movement.
 			System.Array.Copy(fft, fft_history, FFT_SAMPLES);
-			System.Array.Copy(data, data_history, WAVEFORM_SAMPLES);
+			System.Array.Copy(data, data_history, k_WaveformSampleCount);
 			rms_history = rms;
 
 			icoMesh.vertices = displaced_vertices;

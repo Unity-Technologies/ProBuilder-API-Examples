@@ -1,22 +1,23 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
-using ProBuilder.EditorCore;
-using ProBuilder.Core;
+using UnityEditor.ProBuilder;
+using UnityEngine.ProBuilder;
+using EditorUtility = UnityEditor.ProBuilder.EditorUtility;
 
 namespace ProBuilder.EditorExamples
 {
-	class EditorCallbackViewer : EditorWindow
+	sealed class EditorCallbackViewer : EditorWindow
 	{
-		[MenuItem("Tools/" + pb_Constant.PRODUCT_NAME + "/API Examples/Log Callbacks Window")]
+		List<string> m_Logs = new List<string>();
+		Vector2 m_Scroll = Vector2.zero;
+		bool m_Collapse = true;
+
+		[MenuItem("Tools/ProBuilder/API Examples/Log Callbacks Window")]
 		static void MenuInitEditorCallbackViewer()
 		{
-			EditorWindow.GetWindow<EditorCallbackViewer>(true, "ProBuilder Callbacks", true).Show();
+			GetWindow<EditorCallbackViewer>(true, "ProBuilder Callbacks", true).Show();
 		}
-
-		List<string> logs = new List<string>();
-		Vector2 scroll = Vector2.zero;
-		bool collapse = true;
 
 		static Color logBackgroundColor
 		{
@@ -30,70 +31,57 @@ namespace ProBuilder.EditorExamples
 
 		void OnEnable()
 		{
-			// Delegate for Top/Geometry/Texture mode changes.
-			pb_EditorApi.AddOnEditLevelChangedListener(OnEditLevelChanged);
-
-			// Called when a new ProBuilder object is created.
-			// note - this was added in ProBuilder 2.5.1
-			pb_EditorApi.AddOnObjectCreatedListener(OnProBuilderObjectCreated);
-
-			// Called when the ProBuilder selection changes (can be object or element change).
-			// Also called when the geometry is modified by ProBuilder.
-			pb_EditorApi.AddOnSelectionUpdateListener(OnSelectionUpdate);
-
-			// Called when vertices are about to be modified.
-			pb_EditorApi.AddOnVertexMovementBeginListener(OnVertexMovementBegin);
-
-			// Called when vertices have been moved by ProBuilder.
-			pb_EditorApi.AddOnVertexMovementFinishListener(OnVertexMovementFinish);
-
-			// Called when the Unity mesh is rebuilt from ProBuilder mesh data.
-			pb_EditorApi.AddOnMeshCompiledListener(OnMeshCompiled);
+			ProBuilderEditor.selectModeChanged += SelectModeChanged;
+			EditorUtility.meshCreated += MeshCreated;
+			ProBuilderEditor.selectionUpdated += SelectionUpdated;
+			VertexManipulationTool.beforeMeshModification += BeforeMeshModification;
+			VertexManipulationTool.afterMeshModification += AfterMeshModification;
+			EditorMeshUtility.meshOptimized += MeshOptimized;
 		}
 
 		void OnDisable()
 		{
-			pb_EditorApi.RemoveOnEditLevelChangedListener(OnEditLevelChanged);
-			pb_EditorApi.RemoveOnObjectCreatedListener(OnProBuilderObjectCreated);
-			pb_EditorApi.RemoveOnSelectionUpdateListener(OnSelectionUpdate);
-			pb_EditorApi.RemoveOnVertexMovementBeginListener(OnVertexMovementBegin);
-			pb_EditorApi.RemoveOnVertexMovementFinishListener(OnVertexMovementFinish);
-			pb_EditorApi.RemoveOnMeshCompiledListener(OnMeshCompiled);
+			ProBuilderEditor.selectModeChanged -= SelectModeChanged;
+			EditorUtility.meshCreated -= MeshCreated;
+			ProBuilderEditor.selectionUpdated -= SelectionUpdated;
+			VertexManipulationTool.beforeMeshModification -= BeforeMeshModification;
+			VertexManipulationTool.afterMeshModification -= AfterMeshModification;
+			EditorMeshUtility.meshOptimized -= MeshOptimized;
 		}
 
-		void OnProBuilderObjectCreated(pb_Object pb)
-		{
-			AddLog("Instantiated new ProBuilder Object: " + pb.name);
-		}
-
-		void OnEditLevelChanged(int editLevel)
-		{
-			AddLog("Edit Level Changed: " + (EditLevel) editLevel);
-		}
-
-		void OnSelectionUpdate(pb_Object[] selection)
-		{
-			AddLog("Selection Updated: " + string.Format("{0} objects selected.", selection != null ? selection.Length : 0));
-		}
-
-		void OnVertexMovementBegin(pb_Object[] selection)
+		void BeforeMeshModification(ProBuilderMesh[] selection)
 		{
 			AddLog("Began Moving Vertices");
 		}
 
-		void OnVertexMovementFinish(pb_Object[] selection)
+		void AfterMeshModification(ProBuilderMesh[] selection)
 		{
 			AddLog("Finished Moving Vertices");
 		}
 
-		void OnMeshCompiled(pb_Object pb, Mesh mesh)
+		void SelectModeChanged(SelectMode mode)
 		{
-			AddLog(string.Format("Mesh {0} rebuilt", pb.name));
+			AddLog("Selection Mode Changed: " + mode);
+		}
+
+		void MeshCreated(ProBuilderMesh mesh)
+		{
+			AddLog("Instantiated new ProBuilder Object: " + mesh.name);
+		}
+
+		void SelectionUpdated(ProBuilderMesh[] selection)
+		{
+			AddLog("Selection Updated: " + string.Format("{0} objects selected.", selection != null ? selection.Length : 0));
+		}
+
+		void MeshOptimized(ProBuilderMesh pmesh, Mesh umesh)
+		{
+			AddLog(string.Format("Mesh {0} rebuilt", pmesh.name));
 		}
 
 		void AddLog(string summary)
 		{
-			logs.Add(summary);
+			m_Logs.Add(summary);
 			Repaint();
 		}
 
@@ -103,13 +91,13 @@ namespace ProBuilder.EditorExamples
 
 			GUILayout.FlexibleSpace();
 
-			GUI.backgroundColor = collapse ? disabledColor : Color.white;
+			GUI.backgroundColor = m_Collapse ? disabledColor : Color.white;
 			if (GUILayout.Button("Collapse", EditorStyles.toolbarButton))
-				collapse = !collapse;
+				m_Collapse = !m_Collapse;
 			GUI.backgroundColor = Color.white;
 
 			if (GUILayout.Button("Clear", EditorStyles.toolbarButton))
-				logs.Clear();
+				m_Logs.Clear();
 
 			GUILayout.EndHorizontal();
 
@@ -125,21 +113,21 @@ namespace ProBuilder.EditorExamples
 
 			GUILayout.Space(4);
 
-			scroll = GUILayout.BeginScrollView(scroll);
+			m_Scroll = GUILayout.BeginScrollView(m_Scroll);
 
-			int len = logs.Count;
+			int len = m_Logs.Count;
 			int min = System.Math.Max(0, len - 1024);
 
 			for (int i = len - 1; i >= min; i--)
 			{
-				if (collapse &&
+				if (m_Collapse &&
 				    i > 0 &&
 				    i < len - 1 &&
-				    logs[i].Equals(logs[i - 1]) &&
-				    logs[i].Equals(logs[i + 1]))
+				    m_Logs[i].Equals(m_Logs[i - 1]) &&
+				    m_Logs[i].Equals(m_Logs[i + 1]))
 					continue;
 
-				GUILayout.Label(string.Format("{0,3}: {1}", i, logs[i]));
+				GUILayout.Label(string.Format("{0,3}: {1}", i, m_Logs[i]));
 			}
 
 			GUILayout.EndScrollView();
