@@ -112,9 +112,14 @@ namespace ProBuilder.Examples
                 return;
 
             m_DragState.active = true;
-            m_DragState.constraint = new Ray(
-                PMath.Average(m_Selection.mesh.positions, m_Selection.face.indexes),
-                PMath.Normal(m_Selection.mesh, m_Selection.face));
+
+            var trs = m_Selection.mesh.transform;
+
+            // The constraint ray is stored in world space
+            var origin = trs.TransformPoint(PMath.Average(m_Selection.mesh.positions, m_Selection.face.indexes));
+            var direction = trs.TransformDirection(PMath.Normal(m_Selection.mesh, m_Selection.face));
+
+            m_DragState.constraint = new Ray(origin, direction);
             m_DragState.meshState = new MeshState(m_Selection.mesh, m_Selection.face.distinctIndexes);
             m_DragState.offset = GetDragDistance();
         }
@@ -131,9 +136,11 @@ namespace ProBuilder.Examples
             var indices = m_DragState.meshState.indices;
             var vertices = m_DragState.meshState.vertices;
             var origins = m_DragState.meshState.origins;
+            // Constraint is in world coordinates, but we need model space when applying changes to mesh values.
+            var direction = m_Selection.mesh.transform.InverseTransformDirection(m_DragState.constraint.direction);
 
             for (int i = 0, c = indices.Count; i < c; i++)
-                vertices[indices[i]] = origins[i] + m_DragState.constraint.direction * distance;
+                vertices[indices[i]] = origins[i] + direction * distance;
 
             m_Selection.mesh.positions = vertices;
 
