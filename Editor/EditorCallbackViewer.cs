@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor.ProBuilder;
 using UnityEngine.ProBuilder;
 using EditorUtility = UnityEditor.ProBuilder.EditorUtility;
@@ -34,8 +35,8 @@ namespace ProBuilder.EditorExamples
 			ProBuilderEditor.selectModeChanged += SelectModeChanged;
 			EditorUtility.meshCreated += MeshCreated;
 			ProBuilderEditor.selectionUpdated += SelectionUpdated;
-			VertexManipulationTool.beforeMeshModification += BeforeMeshModification;
-			VertexManipulationTool.afterMeshModification += AfterMeshModification;
+			ProBuilderEditor.beforeMeshModification += BeforeMeshModification;
+			ProBuilderEditor.afterMeshModification += AfterMeshModification;
 			EditorMeshUtility.meshOptimized += MeshOptimized;
 		}
 
@@ -44,17 +45,17 @@ namespace ProBuilder.EditorExamples
 			ProBuilderEditor.selectModeChanged -= SelectModeChanged;
 			EditorUtility.meshCreated -= MeshCreated;
 			ProBuilderEditor.selectionUpdated -= SelectionUpdated;
-			VertexManipulationTool.beforeMeshModification -= BeforeMeshModification;
-			VertexManipulationTool.afterMeshModification -= AfterMeshModification;
+			ProBuilderEditor.beforeMeshModification -= BeforeMeshModification;
+			ProBuilderEditor.afterMeshModification -= AfterMeshModification;
 			EditorMeshUtility.meshOptimized -= MeshOptimized;
 		}
 
-		void BeforeMeshModification(ProBuilderMesh[] selection)
+		void BeforeMeshModification(IEnumerable<ProBuilderMesh> selection)
 		{
 			AddLog("Began Moving Vertices");
 		}
 
-		void AfterMeshModification(ProBuilderMesh[] selection)
+		void AfterMeshModification(IEnumerable<ProBuilderMesh> selection)
 		{
 			AddLog("Finished Moving Vertices");
 		}
@@ -69,9 +70,9 @@ namespace ProBuilder.EditorExamples
 			AddLog("Instantiated new ProBuilder Object: " + mesh.name);
 		}
 
-		void SelectionUpdated(ProBuilderMesh[] selection)
+		void SelectionUpdated(IEnumerable<ProBuilderMesh> selection)
 		{
-			AddLog("Selection Updated: " + string.Format("{0} objects selected.", selection != null ? selection.Length : 0));
+			AddLog("Selection Updated: " + string.Format("{0} objects selected.", selection != null ? selection.Count() : 0));
 		}
 
 		void MeshOptimized(ProBuilderMesh pmesh, Mesh umesh)

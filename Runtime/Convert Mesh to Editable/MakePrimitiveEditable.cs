@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿// Demonstrates how to convert a UnityEngine.Mesh object to an editable ProBuilderMesh.
+
+using UnityEngine;
 using UnityEngine.ProBuilder;
 using UnityEngine.ProBuilder.MeshOperations;
 
