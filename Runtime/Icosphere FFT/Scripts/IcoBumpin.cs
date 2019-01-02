@@ -124,15 +124,6 @@ namespace ProBuilder.Examples
 			// Shell is all the faces on the new icosphere.
 			var shell = ico.faces;
 
-			// Materials are set per-face on ProBuilderMesh meshes. pb_Objects will automatically
-			// condense the mesh to the smallest set of subMeshes possible based on materials.
-#if !PROTOTYPE
-			foreach(Face f in shell)
-				f.material = material;
-#else
-			ico.gameObject.GetComponent<MeshRenderer>().sharedMaterial = material;
-#endif
-
 			// Extrude all faces on the icosphere by a small amount. The third boolean parameter
 			// specifies that extrusion should treat each face as an individual, not try to group
 			// all faces together.
@@ -172,7 +163,7 @@ namespace ProBuilder.Examples
 
 			// Build the waveform ring.
 			icoPosition = icoTransform.position;
-			
+
 			waveform.positionCount = k_WaveformSampleCount;
 
 			if( bounceWaveform )

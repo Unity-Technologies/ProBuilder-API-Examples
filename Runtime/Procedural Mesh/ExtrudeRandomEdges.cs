@@ -23,6 +23,7 @@ namespace ProBuilder.Examples
 		void Start()
 		{
 			m_Mesh = ShapeGenerator.GeneratePlane(PivotLocation.Center, 1, 1, 0, 0, Axis.Up);
+			m_Mesh.GetComponent<MeshRenderer>().sharedMaterial = BuiltinMaterials.defaultMaterial;
 			m_LastExtrudedFace = m_Mesh.faces[0];
 		}
 
@@ -36,19 +37,17 @@ namespace ProBuilder.Examples
 
 		void ExtrudeEdge()
 		{
-			Face sourceFace = m_LastExtrudedFace;
-
 			// fetch a random perimeter edge connected to the last face extruded
 			List<WingedEdge> wings = WingedEdge.GetWingedEdges(m_Mesh);
-			IEnumerable<WingedEdge> sourceWings = wings.Where(x => x.face == sourceFace);
+			IEnumerable<WingedEdge> sourceWings = wings.Where(x => x.face == m_LastExtrudedFace);
 			List<Edge> nonManifoldEdges = sourceWings.Where(x => x.opposite == null).Select(y => y.edge.local).ToList();
 			int rand = (int) Random.Range(0, nonManifoldEdges.Count);
 			Edge sourceEdge = nonManifoldEdges[rand];
 
 			// get the direction this edge should extrude in
-			Vector3 dir = ((m_Mesh.positions[sourceEdge.a] + m_Mesh.positions[sourceEdge.b]) * .5f) -
-			              sourceFace.distinctIndexes.Average(x => m_Mesh.positions[x]);
-			dir.Normalize();
+			var edgeCenter = Math.Average(m_Mesh.positions, new[] { sourceEdge.a, sourceEdge.b });
+			var faceCenter = Math.Average(m_Mesh.positions, m_LastExtrudedFace.distinctIndexes);
+			Vector3 dir = (edgeCenter - faceCenter).normalized;
 
 			// this will be populated with the extruded edge
 			Edge[] extrudedEdges;
