@@ -1,13 +1,18 @@
 {
     "name": "Unity.ProBuilder.Examples.Editor",
     "references": [
-        "Unity.ProBuilder.Core",
-        "Unity.ProBuilder.MeshOperations",
-        "Unity.ProBuilder.Editor"
+        "Unity.ProBuilder.Editor",
+        "Unity.ProBuilder"
     ],
     "optionalUnityReferences": [],
     "includePlatforms": [
         "Editor"
     ],
-    "excludePlatforms": []
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": []
 }

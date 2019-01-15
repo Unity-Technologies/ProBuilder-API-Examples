@@ -1,50 +1,84 @@
-﻿#if UNITY_EDITOR || UNITY_STANDALONE
+﻿// Create a sphere, extrude all of it's faces, then animate the extruded faces with an audio source.
+
+#if UNITY_EDITOR || UNITY_STANDALONE
 using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using ProBuilder.Core;
-using ProBuilder.MeshOperations;
+using UnityEngine.ProBuilder;
+using UnityEngine.ProBuilder.MeshOperations;
 
 namespace ProBuilder.Examples
 {
-
 	[RequireComponent(typeof(AudioSource))]
 	public class IcoBumpin : MonoBehaviour
 	{
-		pb_Object ico;			// A reference to the icosphere pb_Object component
-		Mesh icoMesh;			// A reference to the icosphere mesh (cached because we access the vertex array every frame)
-		Transform icoTransform;	// A reference to the icosphere transform component.  Cached because I can't remember if GameObject.transform is still a performance drain :|
-		AudioSource audioSource;// Cached reference to the audiosource.
+		// A reference to the ProBuilderMesh component
+		ProBuilderMesh m_ProBuilderMesh;
+		// A reference to the MeshFilter.sharedMesh
+		Mesh m_UnityMesh;
+		Transform m_Transform;
+		AudioSource m_AudioSource;
+		Vector3 m_StartingPosition = Vector3.zero;
+		float m_FaceLength;
+		const float k_TwoPi = 6.283185f;
+		// How many samples make up the waveform ring.
+		const int k_WaveformSampleCount = 1024;
+		// How many samples are used in the FFT. More means higher resolution.
+		const int k_FftSamples = 4096;
 
-		/**
-		 * Holds a pb_Face, the normal of that face, and the index of every vertex that touches it (sharedIndices).
-		 */
-		struct FaceRef
+		// Keep copy of the last frame's sample data to average with the current when calculating
+		// deformation amounts. Smooths the visual effect.
+		int m_FrameIndex;
+
+		float[][] m_FourierSamples = new float[2][]
 		{
-			public pb_Face face;
-			public Vector3 nrm;		// face normal
-			public int[] indices;	// all vertex indices (including shared connected vertices)
+			new float[k_FftSamples],
+			new float[k_FftSamples]
+		};
 
-			public FaceRef(pb_Face f, Vector3 n, int[] i)
+		float[][] m_RawSamples = new float[2][]
+		{
+			new float[k_WaveformSampleCount],
+			new float[k_WaveformSampleCount]
+		};
+
+		// Root mean square of raw data (volume, but not in dB).
+		float[] m_Rms = new float[2];
+
+		/// <summary>
+		/// This is the container for each extruded column. We'll use it to apply offsets per-extruded face.
+		/// </summary>
+		struct ExtrudedSelection
+		{
+			/// <value>
+			/// The direction in which to move this selection when animating.
+			/// </value>
+			public Vector3 normal;
+
+			/// <value>
+			/// All vertex indices (including common vertices). "Common" refers to vertices that share a position
+			/// but remain discrete.
+			/// </value>
+			public List<int> indices;
+
+			public ExtrudedSelection(ProBuilderMesh mesh, Face face)
 			{
-				face = f;
-				nrm = n;
-				indices = i;
+				indices = mesh.GetCoincidentVertices(face.distinctIndexes);
+				normal = Math.Normal(mesh, face);
 			}
 		}
 
 		// All faces that have been extruded
-		FaceRef[] outsides;
+		ExtrudedSelection[] m_AnimatedSelections;
 
 		// Keep a copy of the original vertex array to calculate the distance from origin.
-		Vector3[] original_vertices, displaced_vertices;
+		Vector3[] m_OriginalVertexPositions, m_DisplacedVertexPositions;
 
-		// The radius of the mesh icosphere on instantiation.
+		// The radius of the sphere on instantiation.
 		[Range(1f, 10f)]
 		public float icoRadius = 2f;
 
-		// The number of subdivisions to give the icosphere.
+		// The number of subdivisions to give the sphere.
 		[Range(0, 3)]
 		public int icoSubdivisions = 2;
 
@@ -52,19 +86,16 @@ namespace ProBuilder.Examples
 		[Range(0f, 1f)]
 		public float startingExtrusion = .1f;
 
-		// The material to apply to the icosphere.
-		public Material material;
-
 		// The max distance a frequency range will extrude a face.
 		[Range(1f, 50f)]
 		public float extrusion = 30f;
 
-		// An FFT returns a spectrum including frequencies that are out of human hearing range -
-		// this restricts the number of bins used from the spectrum to the lower @fftBounds.
+		// An FFT returns a spectrum including frequencies that are out of human hearing range.
+		// This restricts the number of bins used from the spectrum to the lower bounds.
 		[Range(8, 128)]
 		public int fftBounds = 32;
 
-		// How high the icosphere transform will bounce (sample volume determines height).
+		// How high the sphere transform will bounce (sample volume determines height).
 		[Range(0f, 10f)]
 		public float verticalBounce = 4f;
 
@@ -75,165 +106,131 @@ namespace ProBuilder.Examples
 		public LineRenderer waveform;
 
 		// The y size of the waveform.
-		public float waveformHeight	= 2f;
+		public float waveformHeight = 2f;
 
-		// How far from the icosphere should the waveform be.
-		public float waveformRadius	= 20f;
+		// How far from the sphere should the waveform be.
+		public float waveformRadius = 20f;
 
-		// If @rotateWaveformRing is true, this is the speed it will travel.
+		// If rotateWaveformRing is true, this is the speed it will travel.
 		public float waveformSpeed = .1f;
 
-		// If true, the waveform ring will randomly orbit the icosphere.
+		// If true, the waveform ring will randomly orbit the sphere.
 		public bool rotateWaveformRing = false;
 
-		// If true, the waveform will bounce up and down with the icosphere.
+		// If true, the waveform will bounce up and down with the sphere.
 		public bool bounceWaveform = false;
 
 		public GameObject missingClipWarning;
 
-		// Icosphere's starting position.
-		Vector3 icoPosition = Vector3.zero;
-		float faces_length;
-
-		const float TWOPI = 6.283185f;		// 2 * PI
-		const int WAVEFORM_SAMPLES = 1024;	// How many samples make up the waveform ring.
-		const int FFT_SAMPLES = 4096;		// How many samples are used in the FFT.  More means higher resolution.
-
-		// Keep copy of the last frame's sample data to average with the current when calculating
-		// deformation amounts.  Smoothes the visual effect.
-		float[] fft = new float[FFT_SAMPLES],
-				fft_history = new float[FFT_SAMPLES],
-				data = new float[WAVEFORM_SAMPLES],
-				data_history = new float[WAVEFORM_SAMPLES];
-
-		// Root mean square of raw data (volume, but not in dB).
-		float rms = 0f, rms_history = 0f;
-
-		/**
-		 * Creates the icosphere, and loads all the cache information.
-		 */
+		/// <summary>
+		/// Creates the sphere and loads all the cache information.
+		/// </summary>
 		void Start()
 		{
-			audioSource = GetComponent<AudioSource>();
+			m_AudioSource = GetComponent<AudioSource>();
 
-			if( audioSource.clip == null )
+			if (m_AudioSource.clip == null)
 				missingClipWarning.SetActive(true);
 
-			// Create a new icosphere.
-			ico = pb_ShapeGenerator.IcosahedronGenerator(icoRadius, icoSubdivisions);
+			// Create a new sphere.
+			m_ProBuilderMesh = ShapeGenerator.GenerateIcosahedron(PivotLocation.Center, icoRadius, icoSubdivisions);
 
-			// Shell is all the faces on the new icosphere.
-			pb_Face[] shell = ico.faces;
+			// Assign the default material
+			m_ProBuilderMesh.GetComponent<MeshRenderer>().sharedMaterial = BuiltinMaterials.defaultMaterial;
 
-			// Materials are set per-face on pb_Object meshes.  pb_Objects will automatically
-			// condense the mesh to the smallest set of subMeshes possible based on materials.
-#if !PROTOTYPE
-			foreach(pb_Face f in shell)
-				f.material = material;
-#else
-			ico.gameObject.GetComponent<MeshRenderer>().sharedMaterial = material;
-#endif
+			// Shell is all the faces on the new sphere.
+			var shell = m_ProBuilderMesh.faces;
 
-			// Extrude all faces on the icosphere by a small amount.  The third boolean parameter
+			// Extrude all faces on the sphere by a small amount. The third boolean parameter
 			// specifies that extrusion should treat each face as an individual, not try to group
 			// all faces together.
-			ico.Extrude(shell, ExtrudeMethod.IndividualFaces, startingExtrusion);
+			m_ProBuilderMesh.Extrude(shell, ExtrudeMethod.IndividualFaces, startingExtrusion);
 
-			// ToMesh builds the mesh positions, submesh, and triangle arrays.  Call after adding
+			// ToMesh builds the mesh positions, submesh, and triangle arrays. Call after adding
 			// or deleting vertices, or changing face properties.
-			ico.ToMesh();
+			m_ProBuilderMesh.ToMesh();
 
 			// Refresh builds the normals, tangents, and UVs.
-			ico.Refresh();
+			m_ProBuilderMesh.Refresh();
 
-			outsides = new FaceRef[shell.Length];
-			Dictionary<int, int> lookup = ico.sharedIndices.ToDictionary();
+			m_AnimatedSelections = new ExtrudedSelection[shell.Count];
 
-			// Populate the outsides[] cache.  This is a reference to the tops of each extruded column, including
+			// Populate the outsides[] cache. This is a reference to the tops of each extruded column, including
 			// copies of the sharedIndices.
-			for(int i = 0; i < shell.Length; ++i)
-				outsides[i] = new FaceRef( 	shell[i],
-											pb_Math.Normal(ico, shell[i]),
-											ico.sharedIndices.AllIndicesWithValues(lookup, shell[i].distinctIndices).ToArray()
-											);
+			for (int i = 0; i < shell.Count; ++i)
+			{
+				m_AnimatedSelections[i] = new ExtrudedSelection(m_ProBuilderMesh, shell[i]);
+			}
 
 			// Store copy of positions array un-modified
-			original_vertices = new Vector3[ico.vertices.Length];
-			System.Array.Copy(ico.vertices, original_vertices, ico.vertices.Length);
+			m_OriginalVertexPositions = m_ProBuilderMesh.positions.ToArray();
 
-			// displaced_vertices should mirror icosphere mesh vertices.
-			displaced_vertices = ico.vertices;
+			// displaced_vertices should mirror sphere mesh vertices.
+			m_DisplacedVertexPositions = new Vector3[m_ProBuilderMesh.vertexCount];
 
-			icoMesh = ico.GetComponent<MeshFilter>().sharedMesh;
-			icoTransform = ico.transform;
+			m_UnityMesh = m_ProBuilderMesh.GetComponent<MeshFilter>().sharedMesh;
+			m_Transform = m_ProBuilderMesh.transform;
 
-			faces_length = (float)outsides.Length;
+			m_FaceLength = (float) m_AnimatedSelections.Length;
 
 			// Build the waveform ring.
-			icoPosition = icoTransform.position;
-#if UNITY_4_5 || UNITY_4_6 || UNITY_4_7 || UNITY_5_0 || UNITY_5_1 || UNITY_5_2 || UNITY_5_3 || UNITY_5_4
-			waveform.SetVertexCount(WAVEFORM_SAMPLES);
-#elif UNITY_5_5
-			waveform.numPositions = WAVEFORM_SAMPLES;
-#else
-			waveform.positionCount = WAVEFORM_SAMPLES;
-#endif
+			m_StartingPosition = m_Transform.position;
 
+			waveform.positionCount = k_WaveformSampleCount;
 
-			if( bounceWaveform )
-				waveform.transform.parent = icoTransform;
+			if (bounceWaveform)
+				waveform.transform.parent = m_Transform;
 
-			audioSource.Play();
+			m_AudioSource.Play();
 		}
 
 		void Update()
 		{
+			int currentFrame = m_FrameIndex;
+			int previousFrame = (m_FrameIndex + 1) % 2;
+
 			// fetch the fft spectrum
-			audioSource.GetSpectrumData(fft, 0, FFTWindow.BlackmanHarris);
+			m_AudioSource.GetSpectrumData(m_FourierSamples[m_FrameIndex], 0, FFTWindow.BlackmanHarris);
 
 			// get raw data for waveform
-			audioSource.GetOutputData(data, 0);
+			m_AudioSource.GetOutputData(m_RawSamples[m_FrameIndex], 0);
 
 			// calculate root mean square (volume)
-			rms = RMS(data);
+			m_Rms[m_FrameIndex] = CalculateLoudness(m_RawSamples[m_FrameIndex]);
 
-			/**
-			 * For each face, translate the vertices some distance depending on the frequency range assigned.
-			 * Not using the TranslateVertices() pb_Object extension method because as a convenience, that method
-			 * gathers the sharedIndices per-face on every call, which while not tremondously expensive in most
-			 * contexts, is far too slow for use when dealing with audio, and especially so when the mesh is
-			 * somewhat large.
-			 */
-			for(int i = 0; i < outsides.Length; i++)
+			// For each face, translate the vertices some distance depending on the frequency range assigned.
+			for (int i = 0; i < m_AnimatedSelections.Length; i++)
 			{
-				float normalizedIndex = (i/faces_length);
+				float normalizedIndex = (i / m_FaceLength);
 
-				int n = (int)(normalizedIndex*fftBounds);
+				int n = (int) (normalizedIndex * fftBounds);
 
-				Vector3 displacement = outsides[i].nrm * ( ((fft[n]+fft_history[n]) * .5f) * (frequencyCurve.Evaluate(normalizedIndex) * .5f + .5f)) * extrusion;
+				Vector3 displacement = m_AnimatedSelections[i].normal *
+				                       (((m_FourierSamples[currentFrame][n] + m_FourierSamples[previousFrame][n]) * .5f) *
+				                        (frequencyCurve.Evaluate(normalizedIndex) * .5f + .5f)) * extrusion;
 
-				foreach(int t in outsides[i].indices)
+				foreach (int t in m_AnimatedSelections[i].indices)
 				{
-					displaced_vertices[t] = original_vertices[t] + displacement;
+					m_DisplacedVertexPositions[t] = m_OriginalVertexPositions[t] + displacement;
 				}
 			}
 
 			Vector3 vec = Vector3.zero;
 
 			// Waveform ring
-			for(int i = 0; i < WAVEFORM_SAMPLES; i++)
+			for (int i = 0; i < k_WaveformSampleCount; i++)
 			{
-				int n = i < WAVEFORM_SAMPLES-1 ? i : 0;
-				vec.x = Mathf.Cos((float)n/WAVEFORM_SAMPLES * TWOPI) * (waveformRadius + (((data[n] + data_history[n]) * .5f) * waveformHeight));
-				vec.z = Mathf.Sin((float)n/WAVEFORM_SAMPLES * TWOPI) * (waveformRadius + (((data[n] + data_history[n]) * .5f) * waveformHeight));
-
+				int n = i < k_WaveformSampleCount - 1 ? i : 0;
+				float travel = waveformRadius + (m_RawSamples[currentFrame][n] + m_RawSamples[previousFrame][n]) * .5f * waveformHeight;
+				vec.x = Mathf.Cos((float) n / k_WaveformSampleCount * k_TwoPi) * travel;
+				vec.z = Mathf.Sin((float) n / k_WaveformSampleCount * k_TwoPi) * travel;
 				vec.y = 0f;
 
 				waveform.SetPosition(i, vec);
 			}
 
 			// Ring rotation
-			if( rotateWaveformRing )
+			if (rotateWaveformRing)
 			{
 				Vector3 rot = waveform.transform.localRotation.eulerAngles;
 
@@ -243,29 +240,30 @@ namespace ProBuilder.Examples
 				waveform.transform.localRotation = Quaternion.Euler(rot);
 			}
 
-			icoPosition.y = -verticalBounce + ((rms + rms_history) * verticalBounce);
-			icoTransform.position = icoPosition;
+			m_StartingPosition.y = -verticalBounce + ((m_Rms[currentFrame] + m_Rms[previousFrame]) * verticalBounce);
+			m_Transform.position = m_StartingPosition;
 
-			// Keep copy of last FFT samples so we can average with the current.  Smoothes the movement.
-			System.Array.Copy(fft, fft_history, FFT_SAMPLES);
-			System.Array.Copy(data, data_history, WAVEFORM_SAMPLES);
-			rms_history = rms;
+			// Keep copy of last FFT samples so we can average with the current. Smoothes the movement.
+			m_FrameIndex = (m_FrameIndex + 1) % 2;
 
-			icoMesh.vertices = displaced_vertices;
+			// Apply the new extruded vertex positions to the MeshFilter.
+			m_UnityMesh.vertices = m_DisplacedVertexPositions;
 		}
 
-		/**
-		 * Root mean square is a good approximation of perceived loudness.
-		 */
-		float RMS(float[] arr)
+		/// <summary>
+		/// Root mean square is a good approximation of perceived loudness.
+		/// </summary>
+		/// <param name="arr"></param>
+		/// <returns></returns>
+		static float CalculateLoudness(float[] arr)
 		{
-			float 	v = 0f,
-					len = (float)arr.Length;
+			float v = 0f,
+				len = (float) arr.Length;
 
-			for(int i = 0; i < len; i++)
+			for (int i = 0; i < len; i++)
 				v += Mathf.Abs(arr[i]);
 
-			return Mathf.Sqrt(v / (float)len);
+			return Mathf.Sqrt(v / (float) len);
 		}
 	}
 }
