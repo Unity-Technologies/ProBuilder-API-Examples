@@ -1,3 +1,7 @@
+# IMPORTANT
+
+This code has moved into the ProBuilder repository under "Samples~". See https://github.com/Unity-Technologies/com.unity.probuilder
+
 # ProBuilder API Examples
 
 Example code for the Package Manager version of ProBuilder.
